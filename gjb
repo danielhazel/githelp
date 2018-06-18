@@ -59,6 +59,16 @@ s.on('end',function() {\
     }
 });"
 
+issuedeetsIssueTypeExtract="
+s=process.openStdin();\
+d=[];\
+s.on('data',function(c) {\
+    d.push(c);\
+});\
+s.on('end',function() {\
+    var issueType=JSON.parse(d.join('')).fields.issuetype.name;\
+    process.stdout.write(issueType);
+});"
 
 curl -sS -k -u "$JIRACRED" -H "Content-Type: application/json" -X GET https://jira.t1cloud.com/rest/api/latest/issue/$issue > $issuedeetsfile
 
@@ -76,6 +86,18 @@ if grep -i '"Issue Does Not Exist"' $issuedeetsfile 2>&1 > /dev/null; then
 fi
 
 summary="$issue: "`cat $issuedeetsfile | node -e "$issuedeetsSummaryExtract"`
+issueType=$(cat $issuedeetsfile | node -e "$issuedeetsIssueTypeExtract")
+
+branchtype=
+case issuetype in
+    "Bug")
+        branchtype=bugfix
+        ;;
+    *)
+        branchtype=feature
+        ;;
+esac
+branchuser=$(echo $USER | tr '[:upper:]' '[:lower:]')
 
 echo Fixed versions:
 fixedversions=$(cat $issuedeetsfile | node -e "$issuedeetsFixedVersionsNameExtract")
@@ -121,7 +143,7 @@ fi
 echo Creating branch: $branchname
 
 #branchname=`echo $summary | sed -e 's/\^/=#=/g' -e 's/?/}.}/g' -e 's/\]/))))/g' -e 's/\[/((((/g' -e 's/:/----/g' -e 's/ /_/g' -e "s/"'"'"/_''_/g"`
-branchname=$(echo $summary | m2b)
+branchname=$( echo ${branchuser}/${branchtype}/$summary | m2b )
 echo Creating branch: $branchname
 
 echo -n "Okay to continue? [N to abort|blank to accept|branch name to replace] "

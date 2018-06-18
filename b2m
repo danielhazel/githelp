@@ -2,7 +2,9 @@
 
 # input is a git branch name
 # output is a commit message
-exec sed -e 's/=#=/\^/g' \
+exec sed \
+    -e 's?^[a-z]*/\(feature\|bugfix\)/??g' \
+    -e 's/=#=/\^/g' \
     -e 's/}.}/?/g' \
     -e 's/))))/\]/g' \
     -e 's/((((/\[/g' \
