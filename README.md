@@ -110,29 +110,6 @@ Look at all available merge bases and return the one with the fewest commit diff
 
 ---
 ---
-### Assumptions
-
-Schema operations assume the target folder is /dev.  
-   e.g. d:/Devl/DanH/AddOnPacks/Schema.CES/dev
-
-That's because my other schema folders are just soft links back to dev
- 
-ls Ci2/AddOnPacks/**Schema.CES**
-
- dev/  
- it -> dev/  
- rel -> dev/  
- versrel/  
- 
-ls Ci2/AddOnPacks/**Schema.CES/versrel/**
-
- 1711 -> ../dev/  
- 1805 -> ../dev/  
-
-If this is not your setup, discosdu might not work for you
-
----
----
 ### Prerequisites
 
  * Unix tools: grep; sed; awk; expr; ...  

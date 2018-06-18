@@ -42,7 +42,12 @@ elif [ -n "$corelibarg" ] ; then
         targetschemabranch=versrel/$corelibarg
     fi
 fi
-if [ -z "$targetschemabranch" -o "$targetschemabranch" = "dev" ] ; then
+subfolder=$targetschemabranch
+if [ -z "$targetschemabranch" ] ; then
+    targetschemabranch=dev
+fi
+subfolder=$targetschemabranch
+if [ "$targetschemabranch" = "dev" ] ; then
     targetschemabranch=master
 fi
 
@@ -55,10 +60,10 @@ if [ "$okay" != "y" -a "$okay" != "Y" ] ; then
 fi
 
 # Prepare the schema repo clones with a new branch off the target and clean it with force
-evalschema.sh 'prepco '$targetschemabranch
-evalschema.sh 'git clean -f'
-evalschema.sh 'git branch -D '$branch > /dev/null 2>&1
-evalschema.sh 'git checkout -b '$branch
+evalschema.sh --evalschemasubfolder $subfolder 'prepco '$targetschemabranch
+evalschema.sh --evalschemasubfolder $subfolder 'git clean -f'
+evalschema.sh --evalschemasubfolder $subfolder 'git branch -D '$branch > /dev/null 2>&1
+evalschema.sh --evalschemasubfolder $subfolder 'git checkout -b '$branch
 
 # call sdu with discosdu arguments
 set -x
@@ -66,11 +71,11 @@ sdu "$@"
 set +x
 
 # Finally push the schema to bitbucket and merge it
-evalschema.sh 'git add .'
+evalschema.sh --evalschemasubfolder $subfolder 'git add .'
 gitcomment=$(echo $branch | b2m)
-evalschema.sh 'git commit -m "'${gitcomment}'"'
+evalschema.sh --evalschemasubfolder $subfolder 'git commit -m "'${gitcomment}'"'
 
-evalschema.sh 'git show' > /tmp/allschemadiff$$.diff
+evalschema.sh --evalschemasubfolder $subfolder 'git show' > /tmp/allschemadiff$$.diff
 echo Complete diff is available here for review: /tmp/allschemadiff$$.diff
 echo -n "Okay to proceed? [y/n] "
 read okay
@@ -79,4 +84,4 @@ if [ "$okay" != "y" -a "$okay" != "Y" ] ; then
     exit 1
 fi
 
-pushschema $targetschemabranch
+pushschema --evalschemasubfolder $subfolder $targetschemabranch

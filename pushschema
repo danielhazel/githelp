@@ -11,13 +11,25 @@ if [ $# = 0 ] ; then
     exit 1
 fi
 
+subfolder=dev
+prunedargs=()
+lastarg=
+for arg ; do
+    if [ "$lastarg" = "--evalschemasubfolder" ] ; then
+        subfolder=$arg
+    elif [ "$arg" != "--evalschemasubfolder" ] ; then
+        prunedargs+=($arg)
+    fi
+    lastarg="$arg"
+done
+
 aborted=notaborted
 
 if [ $aborted != aborted ] ; then
     # For each schema repo,
     #     Generate a safe branch off the target and merge into it, only to test the merge will have no conflicts
-    echo "Testing for conflicts and pushing local branche to origin ... "
-    evalschema.sh 'yes | preparebranchforpullrequest.sh '"$@" > /tmp/preparebranchforpullrequest$$.txt 2>&1
+    echo "Testing for conflicts and pushing local branches to origin ... "
+    evalschema.sh --evalschemasubfolder $subfolder 'yes | preparebranchforpullrequest.sh '"${prunedargs[@]}" > /tmp/preparebranchforpullrequest$$.txt 2>&1
 
     needcapitalY=
     if grep CONFLICT /tmp/preparebranchforpullrequest$$.txt ; then
@@ -40,7 +52,7 @@ fi
 if [ $aborted != aborted ] ; then
     # For each schema repo,
     #     Create a pull request on bitbucket from the current safe branch to the target
-    evalschema.sh 'yes | createpullrequest '"$@" > /tmp/pr$$.txt 2>&1
+    evalschema.sh --evalschemasubfolder $subfolder 'yes | createpullrequest '"${prunedargs[@]}" > /tmp/pr$$.txt 2>&1
 
     echo -n "Please check /tmp/pr$$.txt and let me know if okay to mprff (merge pull requests) ... [y/n] "
     read okay
@@ -53,7 +65,7 @@ fi
 if [ $aborted != aborted ] ; then
     # For each schema repo,
     #     Merge that pull request ff
-    evalschema.sh 'yes | mergepullrequest '"$@"' --strategyId=ff' > /tmp/mprff$$.txt 2>&1
+    evalschema.sh --evalschemasubfolder $subfolder 'yes | mergepullrequest '"${prunedargs[@]}"' --strategyId=ff' > /tmp/mprff$$.txt 2>&1
 
     echo -n "Please check /tmp/mprff$$.txt and let me know if okay to runCleanup.sh ... [y/n] "
     read okay
@@ -68,8 +80,8 @@ fi
 echo -n "Should cleanup delete the origin copy of local branch ... [y/n] "
 read okay
 if [ "$okay" = "y" -o "$okay" = "Y" ] ; then
-    evalschema.sh 'branch=$(branch); echo including in cleanup: git push origin --delete $branch'
-    evalschema.sh 'branch=$(branch); registerCleanup.sh git push origin --delete $branch'
+    evalschema.sh --evalschemasubfolder $subfolder 'branch=$(branch); echo including in cleanup: git push origin --delete $branch'
+    evalschema.sh --evalschemasubfolder $subfolder 'branch=$(branch); registerCleanup.sh git push origin --delete $branch'
 fi
 
 if [ $aborted = aborted ] ; then
@@ -82,7 +94,7 @@ if [ $aborted = aborted ] ; then
 fi
 # For each schema repo,
 #     delete staging branches
-evalschema.sh 'yes | runCleanup.sh'
+evalschema.sh --evalschemasubfolder $subfolder 'yes | runCleanup.sh'
 
 \rm /tmp/preparebranchforpullrequest$$.txt
 \rm /tmp/pr$$.txt
