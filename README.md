@@ -122,3 +122,13 @@ You've probably got these if you're running bash.  I've been using cygwin but th
  * curl
  
 These are all available using t1get (I might not have been running the versions t1get will provide).
+
+
+### Tips
+
+1. The Bitbucket api is sometimes case sensitive about your email address  
+  If you run into trouble with the **pullto** steps that create pull requests/merge pull requests:
+  1. Run **refreshsavedjiracredentials**
+  2. make sure the email address you provide uses the same cases as the email shown in your <https://git.code.one/account>.
+
+
