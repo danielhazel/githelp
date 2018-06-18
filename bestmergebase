@@ -1,0 +1,72 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+# Discover the merge base of all branches given as arguments which is the most like the first branch (usually master)
+
+if [ "$#" -lt 1 ] ; then
+    echo Usage: $0 master it rel/1711 rel/1805 rel/1811 ...
+    exit 1
+fi
+
+function chattostderr
+{
+    (>&2 echo $@ )
+}
+
+argumentbranches=( "$@" )
+targetbranches=()
+
+for branch in ${argumentbranches[@]}; do
+    if ! branchexists ${branch} ; then
+        chattostderr BRANCH NOT FOUND: $branch ... IGNORING
+        continue
+    else
+        targetbranches+=("${branch}")
+    fi
+done
+
+if [ ${#targetbranches[@]} -eq 0 ] ; then
+    chattostderr No branches found.  Aborting
+    exit 1
+fi
+
+if [ ${#targetbranches[@]} -eq 1 ] ; then
+    chattostderr Only one branch provided.  Just using that...
+    echo ${targetbranches[0]}
+    exit 0
+fi
+
+# this will usually be master
+primarybranch=${targetbranches[0]}
+
+# chattostderr Using target branches: "${targetbranches[@]}"
+
+candidatebases=($(git merge-base --octopus --all "${targetbranches[@]}"))
+
+if [ ${#candidatebases[@]} -eq 0 ] ; then
+    chattostderr No merge-base found ${candidatebases[0]}
+    exit 0
+fi
+
+if [ ${#candidatebases[@]} -eq 1 ] ; then
+    echo ${candidatebases[0]}
+    exit 0
+fi
+
+chattostderr Found merge-base candidates: "${candidatebases[@]}"
+chattostderr Determining which is most like: "$primarybranch"
+
+bestcandidate=
+bestcount=0
+for candidate in ${candidatebases[@]} ; do
+    count=$(git log --no-merges --oneline ${candidate}..${primarybranch} | wc -l)
+    chattostderr There are '[ ' $count ' ]' commits between ${primarybranch} and $(git show $candidate --oneline --decorate --pretty=format:"[%cd (%cr)] <%an> %h %d %s")
+    if [ -z "$bestcandidate" -o "$count" -lt "$bestcount" ] ; then
+        bestcandidate=$candidate
+        bestcount=$count
+    fi
+done
+
+chattostderr Using merge-base: $bestcandidate
+echo $bestcandidate

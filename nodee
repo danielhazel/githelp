@@ -1,0 +1,4 @@
+#!/bin/bash
+
+script=`cat $1`
+exec node -e "$script"

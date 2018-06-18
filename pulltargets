@@ -1,0 +1,26 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+relbranches=$(git branch | sed -e 's/^..//' | grep ^rel)
+versrelbranches=$(git branch | sed -e 's/^..//' | grep ^versrel)
+
+if branchexists master ; then
+    pull master
+fi
+
+if branchexists it ; then
+    pull it
+fi
+
+for branch in $relbranches ; do
+    if branchexists $branch ; then
+        pull $branch
+    fi
+done
+
+for branch in $versrelbranches ; do
+    if branchexists $branch ; then
+        pull $branch
+    fi
+done

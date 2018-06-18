@@ -1,0 +1,8 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+if ! checkDANKEY ; then
+    exit 1
+fi
+openssl enc -aes-256-cbc -pass env:DANKEY

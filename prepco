@@ -1,0 +1,19 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+if [ $# = 0 ] ; then
+    echo Usage: $0 targetbranch
+    exit 1
+fi
+targetbranch=$1
+
+# ready current branch for safe abandon
+if ! gitpackup; then
+    >&2 echo Unable to make current branch safe enough
+    exit 1
+fi
+
+# checkout and clean a target branch
+git checkout $targetbranch
+git pull

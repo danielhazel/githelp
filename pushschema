@@ -1,0 +1,90 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+if ! checkDANKEY ; then
+    exit 1
+fi
+
+if [ $# = 0 ] ; then
+    echo Usage: $0 targetbranch
+    exit 1
+fi
+
+aborted=notaborted
+
+if [ $aborted != aborted ] ; then
+    # For each schema repo,
+    #     Generate a safe branch off the target and merge into it, only to test the merge will have no conflicts
+    echo "Testing for conflicts and pushing local branche to origin ... "
+    evalschema.sh 'yes | preparebranchforpullrequest.sh '"$@" > /tmp/preparebranchforpullrequest$$.txt 2>&1
+
+    needcapitalY=
+    if grep CONFLICT /tmp/preparebranchforpullrequest$$.txt ; then
+        echo '**** ' "Warning: suspected conflict: piping yes will no longer work.  Must use Y below to proceed."
+        needcapitalY=1
+    else
+        echo "No conflicts found."
+    fi
+    echo -n "Please check /tmp/preparebranchforpullrequest$$.txt and let me know if okay to createpullrequest (create pull requests) ... [y/n] "
+    read okay
+    if [ -n "$needcapitalY" -a "$okay" != "Y" ] ; then
+        echo "Aborting."
+        aborted=aborted
+    elif [ "$okay" != "y" -a "$okay" != "Y" ] ; then
+        echo "Aborting."
+        aborted=aborted
+    fi
+fi
+
+if [ $aborted != aborted ] ; then
+    # For each schema repo,
+    #     Create a pull request on bitbucket from the current safe branch to the target
+    evalschema.sh 'yes | createpullrequest '"$@" > /tmp/pr$$.txt 2>&1
+
+    echo -n "Please check /tmp/pr$$.txt and let me know if okay to mprff (merge pull requests) ... [y/n] "
+    read okay
+    if [ "$okay" != "y" -a "$okay" != "Y" ] ; then
+        echo "Aborting."
+        aborted=aborted
+    fi
+fi
+
+if [ $aborted != aborted ] ; then
+    # For each schema repo,
+    #     Merge that pull request ff
+    evalschema.sh 'yes | mergepullrequest '"$@"' --strategyId=ff' > /tmp/mprff$$.txt 2>&1
+
+    echo -n "Please check /tmp/mprff$$.txt and let me know if okay to runCleanup.sh ... [y/n] "
+    read okay
+    if [ "$okay" != "y" -a "$okay" != "Y" ] ; then
+        echo "Aborting."
+        aborted=aborted
+    fi
+fi
+
+# For each schema repo,
+#     maybe add the delete of the current branch upstream
+echo -n "Should cleanup delete the origin copy of local branch ... [y/n] "
+read okay
+if [ "$okay" = "y" -o "$okay" = "Y" ] ; then
+    evalschema.sh 'branch=$(branch); echo including in cleanup: git push origin --delete $branch'
+    evalschema.sh 'branch=$(branch); registerCleanup.sh git push origin --delete $branch'
+fi
+
+if [ $aborted = aborted ] ; then
+    echo -n "Process has been aborted.  Run runCleanup.sh anyway ... [y/n] "
+    read okay
+    if [ "$okay" != "y" -a "$okay" != "Y" ] ; then
+        echo "Aborting."
+        exit 1
+    fi
+fi
+# For each schema repo,
+#     delete staging branches
+evalschema.sh 'yes | runCleanup.sh'
+
+\rm /tmp/preparebranchforpullrequest$$.txt
+\rm /tmp/pr$$.txt
+\rm /tmp/mprff$$.txt
+

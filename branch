@@ -1,0 +1,4 @@
+#!/bin/bash
+
+exec git status | head -1 | sed 's/On branch //'
+

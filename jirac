@@ -1,0 +1,12 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+if ! checkDANKEY ; then
+    exit 1
+fi
+mkdir -p ${HERE}/etc
+if [ ! -f "${HERE}/etc/jiracredentials" ] ; then
+    exit 1
+fi
+cat ${HERE}/etc/jiracredentials | dec

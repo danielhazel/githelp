@@ -1,0 +1,160 @@
+#!/bin/bash
+
+Usage=$(cat <<EOF
+ Usage: $0 exists x args
+    arg exists -v -a -b -v -c
+    exit 0
+    arg exists -v -a -b -c
+    exit 1
+
+ Usage: $0 indexof x args
+    # 1 based
+    arg indexof -v -a -b -v -c
+    echo 3
+    arg indexof -v -a -b -c
+    echo 0
+
+ Usage: $0 at n args
+    # 1 based
+    arg at 3 -a -b -v -c
+    echo "-v"
+    arg at 3 -a -b
+    echo
+
+ Usage: $0 value x args
+    arg value --g -a -b --g=GGG -c
+    echo GGG
+    arg value --g -a -b -c
+    echo 
+
+ Usage: $0 after x args
+    arg after -n -a -b -n 1 -c
+    echo 1
+    arg after -n -a -b -c
+    echo
+
+ Usage: $0 operands args
+    arg operands -a -b -n 1 -c one two three
+    echo 1 one two three
+    arg operands -n -a -b -c
+    echo
+
+ Usage: $0 filters args
+    arg filters -a -b -n 1 -c one two three
+    echo -a -b -n -c 
+    arg filters one two three
+    echo
+EOF
+     )
+
+if [ $# = 0 ] ; then
+    echo "$Usage"
+    exit 1
+fi
+
+query=$1
+shift
+
+case "$query" in
+    "exists")
+        if [ $# = 0 ] ; then
+            exit 1
+        fi
+        target=$1
+        shift
+        for arg; do
+            if [ "$arg" = "$target" ] ; then
+                exit 0
+            fi
+        done
+        exit 1
+    ;;
+    "at")
+        if [ $# = 0 ] ; then
+            exit 1
+        fi
+        target=$1
+        # must be an integer
+        [ $target -eq $target 2> /dev/null ] || exit 1
+        shift
+        if [ $target -le 0 ] ; then
+            exit 1
+        fi
+        if [ $# -lt $target ] ; then
+            exit 1
+        fi
+        echo -n ${!target}
+        exit 0
+    ;;
+    "indexof")
+        if [ $# = 0 ] ; then
+            echo -n 0
+            exit 1
+        fi
+        target=$1
+        shift
+        declare -i index=1
+        for arg; do
+            if [ "$arg" = "$target" ] ; then
+                echo -n $index
+                exit 0
+            fi
+            index+=1
+        done
+        echo -n 0
+        exit 1
+    ;;
+    "value")
+        if [ $# = 0 ] ; then
+            exit 1
+        fi
+        target=${1}=
+        targetlength=${#target}
+        shift
+        for arg ; do
+            if [ "${arg:0:$targetlength}" = "$target" ] ; then
+                echo -n "${arg:$targetlength:10000}"
+                exit 0
+            fi
+        done
+        exit 1
+    ;;
+    "after")
+        if [ $# = 0 ] ; then
+            exit 1
+        fi
+        target=${1}
+        shift
+        found=
+        for arg ; do
+            if [ -n "$found" ] ; then
+                echo -n "$arg"
+                exit 0
+            fi
+            if [ "$arg" = "$target" ] ; then
+                found=1
+            fi
+        done
+        exit 1
+    ;;
+    "operands")
+        operands=()
+        for arg ; do
+            if [ ${arg:0:1} != "-" ] ; then
+                operands+=("$arg")
+            fi
+        done
+        echo -n ${operands[@]}
+        exit 0
+    ;;
+    "filters")
+        filters=()
+        for arg ; do
+            if [ ${arg:0:1} = "-" ] ; then
+                filters+=("$arg")
+            fi
+        done
+        echo -n ${filters[@]}
+        exit 0
+    ;;
+esac

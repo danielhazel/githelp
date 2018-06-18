@@ -1,0 +1,14 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+# Check that there are no staged or unstaged changes
+unstagedfiles=$(git --no-pager diff --name-only | wc -l)
+stagedfiles=$(git --no-pager diff --cached --name-only | wc -l)
+
+if [ $unstagedfiles -eq 0 -a $stagedfiles -eq 0 ] ; then
+    exit 0
+fi
+
+>&2 echo "There are [ $unstagedfiles ] unstaged files and [ $stagedfiles ] staged files."
+exit 1

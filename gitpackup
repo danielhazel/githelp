@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# packup current branch to change off it
+
+function exitlikethis
+{
+    echo $1 >&2
+    exit 1
+}
+
+branch=$(branch)
+
+if git status | head -20 | grep '^Changes ' > /dev/null; then
+    stashybranch=`date +'stash_%Y_%m_%d_%H_%M_%S'`
+    # git branch -D "$stashybranch"
+    git checkout -b "$stashybranch" || exitlikethis "Failed to create faux stash branch $stashybranch"
+    git add -u
+    git commit -m "backing up uncommitted changes"
+    
+    echo STASH BRANCH CREATED HERE: $stashybranch
+    echo IF THERE IS TROUBLE LATER RESTORE WITH:
+    thisdir=$(pwd)
+    cat > ../_restore.sh <<EOFRESTORE
+    cd "$thisdir"
+    git checkout "$branch"
+    git merge "$stashybranch" --no-commit --no-ff
+    git branch -D "$stashybranch"
+EOFRESTORE
+    cat ../_restore.sh
+    echo OR JUST RUN sh ../_restore.sh
+    
+    git checkout "$branch"  || exitlikethis "Failed to re-checkout branch $branch"
+fi

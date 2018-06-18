@@ -1,0 +1,141 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+if ! checkDANKEY ; then
+    exit 1
+fi
+
+if ! allcommitted ; then
+    >&2 echo "Local status is not safe enough to run this command."
+    exit 1
+fi
+
+# Given a jira issue, e.g. CCP-12345, create a feature branch with name generated from the jira description
+# The branch is taken from the best merge base of all the target branches provided
+
+if ! checkJiraCredentials ; then
+    exit 1
+fi
+JIRACRED=$(jirac)
+
+if [ "$#" -lt 1 ] ; then
+    >&2 echo Usage: $0 issue
+    exit 1
+fi
+
+issue=$1
+
+if [[ "$issue" =~ ^[01-9] ]] ; then
+    issue=CCP-$issue
+fi
+
+issuedeetsfile=/tmp/gjb$$
+echo issuedeetsfile=$issuedeetsfile
+
+issuedeetsSummaryExtract="
+s=process.openStdin();\
+d=[];\
+s.on('data',function(c) {\
+    d.push(c);\
+});\
+s.on('end',function() {\
+    var summary=JSON.parse(d.join('')).fields.summary;\
+    process.stdout.write(summary);
+});"
+
+issuedeetsFixedVersionsNameExtract="
+s=process.openStdin();\
+d=[];\
+s.on('data',function(c) {\
+    d.push(c);\
+});\
+s.on('end',function() {\
+    var fixedVersions=JSON.parse(d.join('')).fields.fixVersions;\
+    if (fixedVersions.length) { \
+        for (var ii = 0; ii < fixedVersions.length; ++ii) {\
+            process.stdout.write('    ' + fixedVersions[ii].name + '\\n');\
+        }
+    }
+});"
+
+
+curl -sS -k -u "$JIRACRED" -H "Content-Type: application/json" -X GET https://jira.t1cloud.com/rest/api/latest/issue/$issue > $issuedeetsfile
+
+if badcredentials $issuedeetsfile ; then
+    >&2 echo Unauthorized.
+    >&2 echo You should rerun ${HERE}/refreshsavedjiracredentials
+    exit 1
+fi
+
+if grep -i '"Issue Does Not Exist"' $issuedeetsfile 2>&1 > /dev/null; then
+    >&2 cat $issuedeetsfile
+    >&2 echo
+    >&2 echo Aborting.
+    exit 1
+fi
+
+summary="$issue: "`cat $issuedeetsfile | node -e "$issuedeetsSummaryExtract"`
+
+echo Fixed versions:
+fixedversions=$(cat $issuedeetsfile | node -e "$issuedeetsFixedVersionsNameExtract")
+if [ -z "$fixedversions" ] ; then
+    echo No fixed versions declared on the jira
+else
+    echo "$fixedversions" | sed -e 's?^ *?    rel/?'
+fi
+echo
+echo -n "Target release branches: "
+read -a targetrelbranches
+
+targetbranches=()
+if branchexists master ; then
+   targetbranches+=('master')
+fi
+if branchexists it ; then
+   targetbranches+=('it')
+fi
+
+for rel in ${targetrelbranches[@]}; do
+    if ! branchexists ${rel} ; then
+        echo BRANCH NOT FOUND $rel IGNORING
+        continue
+    else
+        targetbranches+=("${rel}")
+    fi
+done
+echo Using target branches: "${targetbranches[@]}"
+
+# discover merge base from where to start a feature branch for this work
+base=$(bestmergebase "${targetbranches[@]}")
+
+if [ -n "$base" ] ; then
+    echo
+    echo '****************************************************************'
+    echo '*****'  Using base: $base   '*****'
+    git --no-pager show --name-only $base
+    echo '****************************************************************'
+    echo
+fi
+
+echo Creating branch: $branchname
+
+#branchname=`echo $summary | sed -e 's/\^/=#=/g' -e 's/?/}.}/g' -e 's/\]/))))/g' -e 's/\[/((((/g' -e 's/:/----/g' -e 's/ /_/g' -e "s/"'"'"/_''_/g"`
+branchname=$(echo $summary | m2b)
+echo Creating branch: $branchname
+
+echo -n "Okay to continue? [N to abort|blank to accept|branch name to replace] "
+read okay
+if [ "$okay" = "n" -o "$okay" = "N" ] ; then
+    echo "Aborting."
+    exit 1
+fi
+if [ -n "$okay" -a ${#okay} -gt 3 ] ; then
+    branchname=$okay
+fi
+if  [ -n "$base" ] ; then
+    git checkout -b "$branchname" $base
+else
+    git checkout -b "$branchname"
+fi
+git push -u origin "$branchname"

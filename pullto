@@ -1,0 +1,39 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+if ! checkDANKEY ; then
+    exit 1
+fi
+
+if ! allcommitted ; then
+    >&2 echo "Local status is not safe enough to run this command."
+    exit 1
+fi
+
+aborted=notaborted
+
+if [ $aborted != aborted ] ; then
+    echo Testing the pull request will not be blocked by conflicts ...
+    # Generate a safe branch off the target and merge into it
+    if ! preparebranchforpullrequest.sh $@ ; then
+        aborted=aborted
+    fi
+fi
+
+if [ $aborted != aborted ] ; then
+    # create a pull request on bitbucket from that safe branch to the target
+    if ! createpullrequest $@ ; then
+        aborted=aborted
+    fi
+fi
+
+if [ $aborted != aborted ] ; then
+    # merge that pull request no-ff
+    if ! mergepullrequest $@ --strategyId=no-ff ; then
+        aborted=aborted
+    fi
+fi
+
+# delete staging branches
+runCleanup.sh

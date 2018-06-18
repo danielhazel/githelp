@@ -1,0 +1,11 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+if [ -z "$DANKEY" ] ; then
+    >&2 echo I have not been able to set a default DANKEY.
+    >&2 echo Your DANKEY has not been set in this shell.
+    >&2 echo Please privately set an environment variable DANKEY
+    >&2 echo in your parent shell before running any of these scripts
+    exit 1
+fi

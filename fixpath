@@ -1,0 +1,35 @@
+here=$(cd $(dirname ${BASH_SOURCE[0]}); pwd)
+neededtoaddpath=
+if [[ ":$PATH:" != *":${here}:"* ]]; then
+    export PATH=${here}:${PATH}
+    neededtoaddpath=1
+fi
+if [ -z "$USER" ] ; then
+   # need to guess a USER
+   export USER=$(whoami)
+   if [ -z "$USER" -a -n "$USERNAME" ] ; then
+      export USER="$USERNAME"
+   fi
+fi
+if [ -z "$DANKEY" ] ; then
+   # it's better to have exported a private DANKEY into your parent shell
+   # use default
+   export DANKEY=$USER
+fi
+
+profilepath=${here/~/\~}
+comment='# Added by DANKEY for githelp '$profilepath
+if [ -n "$neededtoaddpath" ] ; then
+    if ! grep "$comment" ~/.bash_profile > /dev/null 2>&1 ; then
+        >&2 echo
+        >&2 echo "I'd like to add this folder [$profilepath] to you PATH in your ~/.bash_profile ..."
+        >&2 echo -n "Is that okay? [y/n] "
+        read okay
+        if [ "${okay:0:1}" = "y" -o "${okay:0:1}" = "Y" ] ; then
+            >&2 echo >> ~/.bash_profile
+            >&2 echo "$comment" >> ~/.bash_profile
+            >&2 echo "export PATH=$profilepath"':$PATH' >> ~/.bash_profile
+            >&2 echo
+        fi
+    fi
+fi

@@ -1,0 +1,66 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+# show the name-only diff between two git branches $1 $2
+# $2 default is the current branch
+
+if [ 1 -gt "$#" ] ; then
+    >&2 echo Usage: $0 srcbranch tobranch
+    exit
+fi
+srcbranch=$1
+currentbranch=`git status | head -1 | sed -e 's/^On branch //'`
+if [ 2 == "$#" ] ; then
+    destbranch=$2
+else
+    destbranch=$currentbranch
+fi
+
+destonly=$( git log ${srcbranch}..${destbranch} --no-merges --oneline | awk '{print $1}' )
+srconly=$( git log ${destbranch}..${srcbranch} --no-merges --oneline | awk '{print $1}' )
+
+cherrysrcdest=$( git cherry -v ${srcbranch} ${destbranch} )
+cherrydestsrc=$( git cherry -v ${destbranch} ${srcbranch} )
+
+cowboytags=$(git tag | grep Cowboy_)
+
+echo "$srconly" | while read commit; do
+    if [ -z "$commit" ] ; then
+        continue
+    fi
+    if echo "$cherrydestsrc" | grep '^- '$commit > /dev/null ; then
+        # echo src $commit is a cherry-pick
+        # covered by a cherry-pick
+        continue
+    fi
+    if echo "$cowboytags" | grep 'Cowboy_'$commit > /dev/null ; then
+        # echo src $commit is a cowboy commit
+        # covered by a cowboy commit
+        continue
+    fi
+    git log -1 --oneline --decorate --pretty=format:"[%cd (%cr)] <%an> %h %d %s" $commit | sed -e 's?^?'${srcbranch}':    ?'
+    echo
+    git show --name-only $commit | sed -e 's?^?'${srcbranch}':    ?'
+    echo
+done
+
+echo "$destonly" | while read commit; do
+    if [ -z "$commit" ] ; then
+        continue
+    fi
+    if echo "$cherrysrcdest" | grep '^- '$commit > /dev/null ; then
+        # echo $commit is a cherry-pick
+        # covered by a cherry-pick
+        continue;
+    fi
+    if echo "$cowboytags" | grep 'Cowboy_'$commit > /dev/null ; then
+        # echo $commit is a cowboy commit
+        # covered by a cowboy commit
+        continue;
+    fi
+    git log -1 --oneline --decorate --pretty=format:"[%cd (%cr)] <%an> %h %d %s" $commit  | sed -e 's?^?'${destbranch}':    ?'
+    echo
+    git show --name-only $commit | sed -e 's?^?'${destbranch}':    ?'
+    echo
+done

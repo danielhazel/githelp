@@ -1,0 +1,25 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+# This script usually just calls git checkout passing its parameters.
+# If there is a -M option, it and the argument following it is replaced by a generated branch name.  The argument following it is usually quoted.
+# e.g.
+#    co -b -M "CCP-98765: The monkey chew tobacco on the street car line"
+# becomes
+#    git checkout -b CCP-98765----_The_monkey_chew_tobacco_on_the_street_car_line
+
+processedargs=()
+lastarg=
+for arg ; do
+    if [ "$arg" != "-M" ] ; then
+        if [ "$lastarg" = "-M" ] ; then
+            processedargs+=($(echo $arg | m2b))
+        else
+            processedargs+=($arg)
+        fi
+    fi
+    lastarg=$arg
+done
+
+git checkout ${processedargs[@]}

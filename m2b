@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# input is a commit message
+# output is a git branch name
+exec sed -e 's/\^/=#=/g' \
+     -e 's/?/}.}/g' \
+     -e 's/\]/))))/g' \
+     -e 's/\[/((((/g' \
+     -e 's/:/----/g' \
+     -e 's/ /_/g' \
+     -e "s/"'"'"/_''_/g" \
+    | (read long; echo ${long:0:100})

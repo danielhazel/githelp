@@ -1,0 +1,61 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+function exitlikethis
+{
+    >&2 echo $@
+    exit 1
+}
+
+branch=$(branch)
+stashybranch=
+targetBranch=$branch
+
+if [ -z "$branch" ] ; then
+    exitlikethis Not a git repo.
+fi
+possibleTargetBranch=
+if [ "$#" = 1 ] ; then
+    possibleTargetBranch=$1
+fi
+
+if [ -n "$possibleTargetBranch" ] ; then
+    if ! branchexists $possibleTargetBranch ; then
+        exitlikethis targetBranch: $possibleTargetBranch does not exist
+    else
+        targetBranch=$possibleTargetBranch
+    fi
+fi
+
+if [ -n "$targetBranch" ] ; then
+    echo Pulling target branch: $targetBranch
+    if git status | head -20 | grep '^Changes ' > /dev/null; then
+        stashybranch=$(date +'stash_%Y_%m_%d_%H_%M_%S')
+        # git branch -D "$stashybranch"
+        git checkout -b "$stashybranch" "$branch" || exitlikethis "Failed to create faux stash branch $stashybranch"
+        git add -u
+        git commit -m "backing up before pulling $targetBranch"
+        
+        echo STASH BRANCH CREATED HERE: $stashybranch
+        echo IF THERE IS TROUBLE LATER RESTORE WITH:
+        cat > ./_restore.sh <<EOFRESTORE
+    git checkout "$branch"
+    git merge "$stashybranch" --no-commit --no-ff
+    git branch -D "$stashybranch"
+EOFRESTORE
+        cat ./_restore.sh
+        echo OR JUST RUN sh ./_restore.sh
+        
+        git checkout "$branch"  || exitlikethis "Failed to re-checkout branch $branch"
+    fi
+    git checkout "$targetBranch" || exitlikethis "Failed to checkout $targetBranch"
+    git pull || exitlikethis "Failed to git pull"
+    if [ "$branch" != "$targetBranch" ] ; then
+        git checkout "$branch" || exitlikethis "Failed to checkout $branch"
+    fi
+fi
+if [ -n "$stashybranch" ] ; then
+    git merge "$stashybranch" --no-commit --no-ff || exitlikethis "Failed to merge $stashybranch"
+    git branch -D "$stashybranch"
+fi

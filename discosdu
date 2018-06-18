@@ -1,0 +1,82 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+if ! checkDANKEY ; then
+    exit 1
+fi
+
+if ! allcommitted ; then
+    >&2 echo "Local status is not safe enough to run this command."
+    exit 1
+fi
+
+# This script commits new schema for the current app to the targeted schema branches
+# All the real work is done by sdu and the programs it uses.
+
+# Check the current branch is okay
+branch=$(branch)
+if [ -z "$branch" ] ; then
+    >&2 echo You should run the from within a clone of an apps repo.  No branch found.
+    exit 1
+fi
+if [ "$branch" = "master" -o  "$branch" = "it" -o  "${branch:0:4}" = "rel/" ] ; then
+    >&2 echo You should check out a feature branch first.  Current branch is forbidden: ${branch}.  
+    exit 1
+fi
+
+# Find the schema branch targeted.
+targetschemabranch=
+schemarelarg=$( arg after --schema-rel $@ )
+barg=$( arg after -b $@ )
+corelibarg=$( arg after --corelib $@ )
+
+if [ -n "$schemarelarg" ] ; then
+    targetschemabranch=versrel/$schemarelarg
+elif [  -n "$barg" ] ; then
+    targetschemabranch="$barg"
+elif [ -n "$corelibarg" ] ; then
+    if [ $corelibarg = dev -o $corelibarg = it ] ; then
+        targetschemabranch=$corelibarg
+    else
+        targetschemabranch=versrel/$corelibarg
+    fi
+fi
+if [ -z "$targetschemabranch" -o "$targetschemabranch" = "dev" ] ; then
+    targetschemabranch=master
+fi
+
+echo Using: targetschemabranch=$targetschemabranch
+echo -n "Okay to proceed? [y/n] "
+read okay
+if [ "$okay" != "y" -a "$okay" != "Y" ] ; then
+    echo "Aborting."
+    exit 1
+fi
+
+# Prepare the schema repo clones with a new branch off the target and clean it with force
+evalschema.sh 'prepco '$targetschemabranch
+evalschema.sh 'git clean -f'
+evalschema.sh 'git branch -D '$branch > /dev/null 2>&1
+evalschema.sh 'git checkout -b '$branch
+
+# call sdu with discosdu arguments
+set -x
+sdu "$@"
+set +x
+
+# Finally push the schema to bitbucket and merge it
+evalschema.sh 'git add .'
+gitcomment=$(echo $branch | b2m)
+evalschema.sh 'git commit -m "'${gitcomment}'"'
+
+evalschema.sh 'git show' > /tmp/allschemadiff$$.diff
+echo Complete diff is available here for review: /tmp/allschemadiff$$.diff
+echo -n "Okay to proceed? [y/n] "
+read okay
+if [ "$okay" != "y" -a "$okay" != "Y" ] ; then
+    echo "Aborting."
+    exit 1
+fi
+
+pushschema $targetschemabranch

@@ -1,0 +1,206 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+if ! checkDANKEY ; then
+    exit 1
+fi
+if ! checkJiraCredentials ; then
+    exit 1
+fi
+
+BITBUCKETCRED=$(jirac)
+
+branches=$( arg operands $@ )
+
+if [ "$#" -lt 1 ] ; then
+    >&2 echo Usage: $0 targetBranch '[--strategyId=no-ff] [--strategyId=ff]'
+    >&2 echo Usage: $0 targetBranch sourceBranch
+    exit 1
+fi
+branches=($( arg operands $@ ))
+if [ "${#branches[@]}" -lt 1 ] ; then
+    >&2 echo Usage: $0 targetBranch '[--strategyId=no-ff] [--strategyId=ff]'
+    >&2 echo Usage: $0 targetBranch sourceBranch
+    exit 1
+fi
+
+strategyId='no-ff'
+schemarelargvalue=$( arg value --strategyId $@ )
+if [ -n "$schemarelargvalue" ] ; then
+    strategyId=$schemarelargvalue
+fi
+mergePost='{"message":"","strategyId":"'${strategyId}'"}'
+
+currentBranch=$(git status | head -1 | sed -e 's/^On branch //')
+targetBranch=${branches[0]}
+sourceBranch=$currentBranch
+if [ "${#branches[@]}" -gt "1" ] ; then
+    sourceBranch=${branches[1]}
+fi
+
+echo Merging pull request from $sourceBranch into $targetBranch using mergePost=$mergePost
+echo -n "Okay to continue? [y/N] "
+read okay
+if [ "$okay" != "y" -a "$okay" != "Y" ] ; then
+    echo "Aborting."
+    exit 1
+fi
+
+echo Abort if not remotely tracking one or the other
+
+sourceBranchInfo=$(git branch -vv | sed -e 's/^..//g' | grep '^'${sourceBranch})
+targetBranchInfo=$(git branch -vv | sed -e 's/^..//g' | grep '^'${targetBranch})
+
+# echo $sourceBranchInfo
+# echo $targetBranchInfo
+
+sourceBranchInfoPatchBrackets=$(echo $sourceBranchInfo | sed -e 's/\[/___LEFTSQUARE___/' -e 's/\]/___RIGHTSQUARE___/')
+targetBranchInfoPatchBrackets=$(echo $targetBranchInfo | sed -e 's/\[/___LEFTSQUARE___/' -e 's/\]/___RIGHTSQUARE___/')
+
+remoteSourceBranch=$(expr "$sourceBranchInfoPatchBrackets" : '.*___LEFTSQUARE___\(.*\)___RIGHTSQUARE___.*')
+remoteTargetBranch=$(expr "$targetBranchInfoPatchBrackets" : '.*___LEFTSQUARE___\(.*\)___RIGHTSQUARE___.*')
+
+# echo remoteSourceBranch=$remoteSourceBranch
+# echo remoteTargetBranch=$remoteTargetBranch
+
+if [ -z "$remoteTargetBranch" ] ; then
+    >&2 echo "No remote tracking branch found for branch $targetBranch"
+fi
+if [ -z "$remoteSourceBranch" ] ; then
+    >&2 echo "No remote tracking branch found for branch $sourceBranch"
+fi
+
+if [ -z "$remoteTargetBranch" -o -z "$remoteSourceBranch"  ] ; then
+    >&2 echo "Aborting."
+    exit 1
+fi
+if [[ $remoteSourceBranch =~ :\ ahead ]] ; then
+    >&2 echo Please fix these first;
+    exit 1;
+fi
+if [[ $remoteSourceBranch =~ :\ behind ]] ; then
+    >&2 echo Please fix these first;
+    exit 1;
+fi
+if [[ $remoteTargetBranch =~ :\ ahead ]] ; then
+    >&2 echo Please fix these first;
+    exit 1;
+fi
+if [[ $remoteTargetBranch =~ :\ behind ]] ; then
+    >&2 echo Please fix these first;
+    exit 1;
+fi
+
+
+sourceRepoId=$(expr "$remoteSourceBranch" : '^\([^/]*\)/.*')
+# echo sourceRepoId=$sourceRepoId
+targetRepoId=$(expr "$remoteTargetBranch" : '^\([^/]*\)/.*')
+# echo targetRepoId=$targetRepoId
+
+sourceRepoUrl=$(git config remote.${sourceRepoId}.url)
+targetRepoUrl=$(git config remote.${targetRepoId}.url)
+
+# echo sourceRepoUrl=$sourceRepoUrl
+# echo targetRepoUrl=$targetRepoUrl
+
+sourceRepoSlug=$(expr "$sourceRepoUrl" : '.*/scm/[^/]*/\([^/]*\).git$')
+sourceProjectKey=$(expr "$sourceRepoUrl" : '.*/scm/\([^/]*\)/[^/]*.git$')
+targetRepoSlug=$(expr "$targetRepoUrl" : '.*/scm/[^/]*/\([^/]*\).git$')
+targetProjectKey=$(expr "$targetRepoUrl" : '.*/scm/\([^/]*\)/[^/]*.git$')
+
+
+# echo sourceRepoSlug=$sourceRepoSlug
+# echo sourceProjectKey=$sourceProjectKey
+# echo targetRepoSlug=$targetRepoSlug
+# echo targetProjectKey=$targetProjectKey
+
+sourceRefId=${remoteSourceBranch/${sourceRepoId}/refs\/heads}
+targetRefId=${remoteTargetBranch/${targetRepoId}/refs\/heads}
+
+# echo sourceRefId=$sourceRefId
+# echo targetRefId=$targetRefId
+
+bitbucketurl=https://git.code.one/rest/api/1.0/projects/${targetProjectKey}/repos/${targetRepoSlug}/pull-requests
+echo Pull requests bitbucketurl=$bitbucketurl
+
+
+pullrequestsfile=/tmp/pullrequests$$
+echo pullrequestsfile=$pullrequestsfile
+curl -sS -k -u "$BITBUCKETCRED"  -H "Content-Type: application/json" -X GET "$bitbucketurl" > $pullrequestsfile
+
+if badcredentials $pullrequestsfile ; then
+    >&2 echo Unauthorized.
+    >&2 echo You should rerun ${HERE}/refreshsavedjiracredentials
+    exit 1
+fi
+
+pullrequestidextractTemplate="
+s=process.openStdin();\
+d=[];\
+s.on('data',function(c) {\
+    d.push(c);\
+});\
+s.on('end',function() {\
+    var pulrequests=JSON.parse(d.join('')).values;\
+    //console.log(JSON.stringify(pulrequests, null, 2));
+    //var =pulrequests[\"Items\"][0][\"ConfigSettingsList\"][\"${suite}\"];
+    var id=undefined;
+    pulrequests.forEach (function (pullrequest) {\
+        if (pullrequest.fromRef.id == \"SOURCEREF\"\
+            && pullrequest.fromRef.repository.slug.toUpperCase() == \"SOURCEREPOSLUG\".toUpperCase()\
+            && pullrequest.fromRef.repository.project.key.toUpperCase() == \"SOURCEPROJECTKEY\".toUpperCase()\
+            && pullrequest.toRef.id == \"TARGETREF\"\
+            && pullrequest.toRef.repository.slug.toUpperCase() == \"TARGETREPOSLUG\".toUpperCase()\
+            && pullrequest.toRef.repository.project.key.toUpperCase() == \"TARGETPROJECTKEY\".toUpperCase()\
+            && pullrequest.title == \"Merging from SOURCEBRANCH into TARGETBRANCH\"\
+) {\
+             process.stdout.write(pullrequest.id.toString() + \",\" + pullrequest.version.toString());\
+             return;\
+        }\
+    });\
+});"
+
+pullrequestidextract=${pullrequestidextractTemplate/SOURCEBRANCH/$sourceBranch}
+pullrequestidextract=${pullrequestidextract/TARGETBRANCH/$targetBranch}
+pullrequestidextract=${pullrequestidextract/SOURCEREF/$sourceRefId}
+pullrequestidextract=${pullrequestidextract/TARGETREF/$targetRefId}
+pullrequestidextract=${pullrequestidextract/SOURCEPROJECTKEY/$sourceProjectKey}
+pullrequestidextract=${pullrequestidextract/TARGETPROJECTKEY/$targetProjectKey}
+pullrequestidextract=${pullrequestidextract/SOURCEREPOSLUG/$sourceRepoSlug}
+pullrequestidextract=${pullrequestidextract/TARGETREPOSLUG/$targetRepoSlug}
+
+#echo pullrequestidextract=$pullrequestidextract
+
+pullRequestIdAndVersion=$(cat $pullrequestsfile | node -e "$pullrequestidextract")
+# echo pullRequestIdAndVersion=$pullRequestIdAndVersion
+pullRequestId=$(expr "$pullRequestIdAndVersion" : '\([^,]*\),.*')
+pullRequestVersion=$(expr "$pullRequestIdAndVersion" : '[^,]*,\(.*\)')
+
+echo pullRequestId=$pullRequestId
+echo pullRequestVersion=$pullRequestVersion
+
+if [ -z "$pullRequestId" -o -z "$pullRequestVersion" ] ; then
+    echo "Aborting."
+    exit 1
+fi
+
+bitbucketpullrequesturl=https://git.code.one/rest/api/1.0/projects/${targetProjectKey}/repos/${targetRepoSlug}/pull-requests/$pullRequestId
+echo Found Pull Request $pullRequestId
+curl -sS -k -u "$BITBUCKETCRED"  -H "Content-Type: application/json" -X GET "$bitbucketpullrequesturl" \
+    | formatJson
+echo
+echo "About to merge pull request $pullRequestId version ${pullRequestVersion}.  Okay? "
+
+echo -n "Okay to continue? [y/N] "
+read okay
+if [ "$okay" != "y" -a "$okay" != "Y" ] ; then
+    echo "Aborting."
+    exit 1
+fi
+
+bitbucketpullrequestmergeurl=https://git.code.one/rest/api/1.0/projects/${targetProjectKey}/repos/${targetRepoSlug}/pull-requests/${pullRequestId}/merge?version=${pullRequestVersion}
+
+echo bitbucketpullrequestmergeurl=$bitbucketpullrequestmergeurl
+curl -sS -k -u "$BITBUCKETCRED"  -H "Content-Type: application/json" -X POST -d "$mergePost" "$bitbucketpullrequestmergeurl" \
+     | formatJson
