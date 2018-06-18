@@ -49,9 +49,20 @@ if grep CONFLICT /tmp/basegensafepullrequest$$.txt ; then
 else
     echo "No conflicts found."
 fi
-echo -n "Please check /tmp/basegensafepullrequest$$.txt and let me know when okay to createpullrequest (create pull requests) ... [y/n] "
+echo "Please check /tmp/basegensafepullrequest$$.txt and let me know when okay to createpullrequest (create pull requests) ... "
+echo -n "[ y (yes) / n (abort) / ! (dont ask anymore) ] "
 read okay
-if [ -n "$needcapitalY" -a "$okay" != "Y" ] ; then
+
+if [ -n "$needcapitalY" ] ; then
+    if [ "$okay" = '!' ] ; then
+        echo "Warning $okay being downgraded to Y because of earlier conflicts."
+        okay=Y
+    fi
+fi
+if [ "$okay" = '!' ] ; then
+    echo
+    echo "USER REQUESTED CAREER TO END!!"
+elif [ -n "$needcapitalY" -a "$okay" != "Y" ] ; then
     echo "Aborting."
     aborted=aborted
 elif [ "$okay" != "y" -a "$okay" != "Y" ] ; then
