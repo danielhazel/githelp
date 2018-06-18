@@ -89,7 +89,7 @@ summary="$issue: "`cat $issuedeetsfile | node -e "$issuedeetsSummaryExtract"`
 issueType=$(cat $issuedeetsfile | node -e "$issuedeetsIssueTypeExtract")
 
 branchtype=
-case issuetype in
+case "$issueType" in
     "Bug")
         branchtype=bugfix
         ;;
