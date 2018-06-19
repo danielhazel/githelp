@@ -80,8 +80,8 @@ fi
 echo -n "Should cleanup delete the origin copy of local branch ... [y/n] "
 read okay
 if [ "$okay" = "y" -o "$okay" = "Y" ] ; then
-    evalschema.sh --evalschemasubfolder $subfolder 'branch=$(branch); echo including in cleanup: git push origin --delete $branch'
-    evalschema.sh --evalschemasubfolder $subfolder 'branch=$(branch); registerCleanup.sh git push origin --delete $branch'
+    evalschema.sh --evalschemasubfolder $subfolder 'echo including in cleanup: git push origin --delete \"$(branch)\"'
+    evalschema.sh --evalschemasubfolder $subfolder 'registerCleanup.sh git push origin --delete \"$(branch)\"'
 fi
 
 if [ $aborted = aborted ] ; then

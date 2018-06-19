@@ -35,9 +35,9 @@ fi
 git checkout -b me
 git checkout -b $targetBranchCopy $targetBranch
 
-registerCleanup.sh git checkout $startbranch
-registerCleanup.sh git branch -D $targetBranchCopy
-registerCleanup.sh 'git push origin --delete '$targetBranchCopy' 2> /dev/null'
+registerCleanup.sh 'git checkout "'${startbranch}'"'
+registerCleanup.sh 'git branch -D "'${targetBranchCopy}'"'
+registerCleanup.sh 'git push origin --delete "'${targetBranchCopy}'" 2> /dev/null'
 
 git merge me > /tmp/basegensafepullrequest$$.txt 2>&1
 

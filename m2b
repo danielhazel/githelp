@@ -2,11 +2,43 @@
 
 # input is a commit message
 # output is a git branch name
-exec sed -e 's/\^/=#=/g' \
-     -e 's/?/}.}/g' \
+
+function trimillegalends {
+    long=${1:0:100}
+    while true; do
+        good=true;
+        if [[ "$long" == */ ]] ; then
+            long=${long::-1}
+            good=false
+        fi
+        if [[ "$long" == *.lock ]] ; then
+            long=${long::-5}
+            good=false
+        fi
+        if $good ; then
+            break
+        fi
+    done
+    echo $long
+}
+
+exec sed \
+     -e 's|\.lock$|}L>|g' \
+     -e 's/@{/}C>/g' \
+     -e 's/^\./}0D>/g' \
+     -e 's?//?}S>?g' \
+     -e 's?/\.?}SD>?g' \
+     -e 's?\*?}SS>?g' \
+     -e 's/\^/=#=/g' \
+     -e 's/?/}.>/g' \
+     -e 's/~/}t>/g' \
      -e 's/\]/))))/g' \
      -e 's/\[/((((/g' \
      -e 's/:/----/g' \
      -e 's/ /_/g' \
+     -e 's/\.\./}DD>/g' \
+     -e 's/\\/}BSBS>/g' \
      -e "s/"'"'"/_''_/g" \
-    | (read long; echo ${long:0:100})
+     -e "s/\.$/}dD>/g" \
+     -e "s|/$|}sD>|g" \
+    | (read long; trimillegalends $long )

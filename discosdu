@@ -60,10 +60,10 @@ if [ "$okay" != "y" -a "$okay" != "Y" ] ; then
 fi
 
 # Prepare the schema repo clones with a new branch off the target and clean it with force
-evalschema.sh --evalschemasubfolder $subfolder 'prepco '$targetschemabranch
+evalschema.sh --evalschemasubfolder $subfolder 'prepco "'$targetschemabranch'"'
 evalschema.sh --evalschemasubfolder $subfolder 'git clean -f'
-evalschema.sh --evalschemasubfolder $subfolder 'git branch -D '$branch > /dev/null 2>&1
-evalschema.sh --evalschemasubfolder $subfolder 'git checkout -b '$branch
+evalschema.sh --evalschemasubfolder $subfolder 'git branch -D "'$branch'"' > /dev/null 2>&1
+evalschema.sh --evalschemasubfolder $subfolder 'git checkout -b "'$branch'"'
 
 # call sdu with discosdu arguments
 set -x
@@ -84,4 +84,4 @@ if [ "$okay" != "y" -a "$okay" != "Y" ] ; then
     exit 1
 fi
 
-pushschema --evalschemasubfolder $subfolder $targetschemabranch
+pushschema --evalschemasubfolder $subfolder "$targetschemabranch"
