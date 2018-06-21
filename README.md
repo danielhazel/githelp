@@ -112,23 +112,22 @@ Look at all available merge bases and return the one with the fewest commit diff
 ---
 ### Prerequisites
 
+Hopefully everything you need is already installed on your Amazon Workspace.
+
  * Unix tools: grep; sed; awk; expr; ...  
-You've probably got these if you're running bash.  I've been using cygwin but they seem to be available with the mingw64 that sourcetree spins up as terminal.
+These already seem to be available in the mingw64 bash terminal that launches when you click the Terminal icon in Sourcetree.
    
- * openssl
+ * t1get install openssl
  
- * nodejs
+ * t1get install nodejs
 
- * curl
+ * t1get install curl
  
-These are all available using t1get (I might not have been running the versions t1get will provide).
-
-
 ### Tips
 
-1. The Bitbucket api is sometimes case sensitive about your email address  
+1. The Bitbucket api is sometimes case sensitive about your email address__
   If you run into trouble with the **pullto** steps that create pull requests/merge pull requests:
-  1. Run **refreshsavedjiracredentials**
-  2. make sure the email address you provide uses the same cases as the email shown in your <https://git.code.one/account>.
+  + Run **refreshsavedjiracredentials**
+  + make sure the email address you provide uses the same cases as the email shown in your <https://git.code.one/account>.
 
 

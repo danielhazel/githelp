@@ -41,19 +41,31 @@ registerCleanup.sh 'git push origin --delete "'${targetBranchCopy}'" 2> /dev/nul
 
 git merge me > /tmp/basegensafepullrequest$$.txt 2>&1
 
-needcapitalY=
+needcapitalY=dontNeedCaptialY
 aborted=notaborted
 if grep CONFLICT /tmp/basegensafepullrequest$$.txt ; then
     echo '**** ' "Warning: suspected conflict: piping yes will no longer work.  Must use Y below to proceed."
+    echo
+    echo '*********************************************************'
+    echo "Before typing Y, you should "
+    echo "  1. Resolve your conflicts"
+    echo "  2. Commit your changes to the current temprory branch: "
+    echo "      ${targetBranchCopy}"
+    echo '*********************************************************'
+    echo
     needcapitalY=needcapitalY
 else
     echo "No conflicts found."
 fi
 echo "Please check /tmp/basegensafepullrequest$$.txt and let me know when okay to createpullrequest (create pull requests) ... "
-echo -n "[ y (yes) / n (abort) / ! (dont ask anymore) ] "
+yes=y
+if [ $needcapitalY = needcapitalY  ] ; then
+   yes=Y
+fi
+echo -n "[ ${yes} (yes) / n (abort) / ! (dont ask anymore) ] "
 read okay
 
-if [ -n "$needcapitalY" ] ; then
+if [ $needcapitalY = needcapitalY  ] ; then
     if [ "$okay" = '!' ] ; then
         echo "Warning $okay being downgraded to Y because of earlier conflicts."
         okay=Y
@@ -62,7 +74,7 @@ fi
 if [ "$okay" = '!' ] ; then
     echo
     echo "USER REQUESTED CAREER TO END!!"
-elif [ -n "$needcapitalY" -a "$okay" != "Y" ] ; then
+elif [ $needcapitalY = needcapitalY -a "$okay" != "Y" ] ; then
     echo "Aborting."
     aborted=aborted
 elif [ "$okay" != "y" -a "$okay" != "Y" ] ; then
@@ -82,7 +94,7 @@ if [ $aborted = aborted ] ; then
     exit 1
 fi
 
-if [ -z "$needcapitalY" ] ; then
+if [ $needcapitalY = dontNeedCaptialY ] ; then
     # no conflicts were found.  change back to the original branch for server work.
     git reset HEAD
     git checkout .
