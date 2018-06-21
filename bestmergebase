@@ -59,9 +59,9 @@ chattostderr Determining which is most like: "$primarybranch"
 
 bestcandidate=
 bestcount=0
-for candidate in ${candidatebases[@]} ; do
+for candidate in "${candidatebases[@]}" ; do
     count=$(git log --no-merges --oneline ${candidate}..${primarybranch} | wc -l)
-    chattostderr There are '[ ' $count ' ]' commits between ${primarybranch} and $(git show $candidate --oneline --decorate --pretty=format:"[%cd (%cr)] <%an> %h %d %s")
+    chattostderr There are '[ ' $count ' ]' commits between ${primarybranch} and $(git log -1 $candidate --oneline --decorate --pretty=format:"[%cd (%cr)] <%an> %h %d %s")
     if [ -z "$bestcandidate" -o "$count" -lt "$bestcount" ] ; then
         bestcandidate=$candidate
         bestcount=$count
