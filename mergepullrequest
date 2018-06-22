@@ -75,23 +75,24 @@ if [ -z "$remoteTargetBranch" -o -z "$remoteSourceBranch"  ] ; then
     >&2 echo "Aborting."
     exit 1
 fi
+
+fixthese=()
 if [[ $remoteSourceBranch =~ :\ ahead ]] ; then
-    >&2 echo Please fix these first;
-    exit 1;
+    fixthese+=("Your local source branch $sourceBranch is ahead.  Please fix this first.")
 fi
 if [[ $remoteSourceBranch =~ :\ behind ]] ; then
-    >&2 echo Please fix these first;
-    exit 1;
+    fixthese+=("Your local source branch $sourceBranch is behind.  Please fix this first: e.g. pull")
 fi
 if [[ $remoteTargetBranch =~ :\ ahead ]] ; then
-    >&2 echo Please fix these first;
-    exit 1;
+    fixthese+=("Your local target branch $targetBranch is ahead.  Please fix this first.")
 fi
 if [[ $remoteTargetBranch =~ :\ behind ]] ; then
-    >&2 echo Please fix these first;
-    exit 1;
+    fixthese+=("Your local target branch $targetBranch is behind.  Please fix this first: e.g. pull $targetBranch")
 fi
-
+if [ "${#fixthese[@]}" -gt 0 ] ; then
+    >&2 printf '%s\n' "${fixthese[@]}"
+    exit 1
+fi
 
 sourceRepoId=$(expr "$remoteSourceBranch" : '^\([^/]*\)/.*')
 # echo sourceRepoId=$sourceRepoId
@@ -104,10 +105,10 @@ targetRepoUrl=$(git config remote.${targetRepoId}.url)
 # echo sourceRepoUrl=$sourceRepoUrl
 # echo targetRepoUrl=$targetRepoUrl
 
-sourceRepoSlug=$(expr "$sourceRepoUrl" : '.*/scm/[^/]*/\([^/]*\).git$')
-sourceProjectKey=$(expr "$sourceRepoUrl" : '.*/scm/\([^/]*\)/[^/]*.git$')
-targetRepoSlug=$(expr "$targetRepoUrl" : '.*/scm/[^/]*/\([^/]*\).git$')
-targetProjectKey=$(expr "$targetRepoUrl" : '.*/scm/\([^/]*\)/[^/]*.git$')
+sourceRepoSlug=$(expr "$sourceRepoUrl" : '.*/[^/]*/\([^/]*\).git$')
+sourceProjectKey=$(expr "$sourceRepoUrl" : '.*/\([^/]*\)/[^/]*.git$')
+targetRepoSlug=$(expr "$targetRepoUrl" : '.*/[^/]*/\([^/]*\).git$')
+targetProjectKey=$(expr "$targetRepoUrl" : '.*/\([^/]*\)/[^/]*.git$')
 
 
 # echo sourceRepoSlug=$sourceRepoSlug

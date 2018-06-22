@@ -130,4 +130,7 @@ These already seem to be available in the mingw64 bash terminal that launches wh
   + Run **refreshsavedjiracredentials**
   + make sure the email address you provide uses the same cases as the email shown in your <https://git.code.one/account>.
 
-
+2. Your jira password needs to be the same as your bitbucket password__
+  If you run into trouble with the **pullto** steps that create pull requests/merge pull requests:
+  + Change your bitbucket password to your jira password or change your jira password to your bitbucket password
+  + Run **refreshsavedjiracredentials**
