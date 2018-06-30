@@ -1,0 +1,96 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+# Try to consolidate feature branches that been merged all the way to the final argument branch
+
+if [ "$#" -lt 2 ] ; then
+    echo Usage: $0 master it rel/1711 rel/1805 rel/1811 ...
+    exit 1
+fi
+
+function chattostderr
+{
+    (>&2 echo $@ )
+}
+
+argumentbranches=( "$@" )
+targetbranches=()
+
+for branch in ${argumentbranches[@]}; do
+    if ! branchexists ${branch} ; then
+        chattostderr BRANCH NOT FOUND: $branch ... IGNORING
+        continue
+    else
+        targetbranches+=("${branch}")
+    fi
+done
+
+if [ ${#targetbranches[@]} -eq 0 ] ; then
+    chattostderr No branches found.  Aborting
+    exit 1
+fi
+
+if [ ${#targetbranches[@]} -eq 1 ] ; then
+    chattostderr Only one branch provided.  Aborting
+    exit 0
+fi
+
+# Lets call the final argument branch rel
+rel=${targetbranches[-1]}
+root=$(git reflog $rel | tail -n 1 | awk '{print $1}')
+
+# create the mergetrackbranch if it doesn't exist
+mergetrackbranch=mergetrack/$rel
+if ! branchexists $mergetrackbranch ; then
+    bestmergebase=$( bestmergebase ${targetbranches[@]} )
+    git checkout -b $mergetrackbranch $bestmergebase || exit 1
+fi
+
+# Find all the second parents of merge commits to rel back to its root
+secondparents=$(git log --merges ${root}..${rel} --oneline --pretty=%P | awk '{print $2}')
+
+devbranches=${targetbranches[@]/$rel}
+
+mergethese=()
+for mergeparent in ${secondparents[@]} ; do
+    okaysofar=okaysofar
+    for devbranch in ${devbranches[@]} ; do
+        if ! git merge-base --is-ancestor $mergeparent $devbranch ; then
+            chattostderr $mergeparent not in $devbranch
+            okaysofar=notokay
+            break
+        fi
+    done
+    if [ $okaysofar = okaysofar ] ; then
+        mergethese+=( $mergeparent )
+    fi
+done
+
+outstanding=()
+for mergeparent in ${mergethese[@]} ; do
+    if git merge-base --is-ancestor $mergeparent $mergetrackbranch ; then
+        chattostderr $mergeparent already in $mergetrackbranch
+        continue
+    fi
+    outstanding+=( $mergeparent )
+done
+
+echo "About to try to merge these into $mergetrackbranch"
+echo ${outstanding[@]}
+
+git checkout $mergetrackbranch
+
+for mergeparent in $(printf '%s\n' "${outstanding[@]}" | tac) ; do
+    echo
+    git show --name-status $mergeparent
+    echo
+    git merge $mergeparent -m "Merge to $mergetrackbranch" -m "$(git log -1 --pretty=%s $mergeparent)" --log \
+        || ( chattostderr
+             chattostderr "_____________________________________"
+             chattostderr Aborting.  Merge failed please run
+             chattostderr git merge $mergeparent
+             chattostderr afterwards and resolve the conflicts.
+             chattostderr "_____________________________________"
+             git merge --abort )
+done

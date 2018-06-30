@@ -50,7 +50,10 @@ if [ ${#candidatebases[@]} -eq 0 ] ; then
 fi
 
 if [ ${#candidatebases[@]} -eq 1 ] ; then
-    echo ${candidatebases[0]}
+    candidate=${candidatebases[0]}
+    count=$(git log --no-merges --oneline ${candidate}..${primarybranch} | wc -l)
+    chattostderr There are '[ ' $count ' ]' commits between ${primarybranch} and $(git log -1 $candidate --oneline --decorate --pretty=format:"[%cd (%cr)] <%an> %h %d %s")
+    echo $candidate
     exit 0
 fi
 
