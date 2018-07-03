@@ -5,7 +5,7 @@
 ---
 ---
 ### Workflows
-#### Merge-base workflow
+#### My merge-base workflow
 
 0. **pulltargets**
 
@@ -45,7 +45,7 @@ USAGE: **gjb** *jiraissue*
 gjb will:
 
 1. show you the fixed versions declared on the jira item, 
-2. prompt you for rel branches to target
+2. prompt you for rel branches you plan to target
 3. find the best merge base to branch from to allow your new branch to be merged safely into master, it, rel/...
 4. checkout a new branch at the point named after the jira description
 5. push that branch to origin
@@ -66,15 +66,19 @@ just pulls *master*, *it* and any *rel* branches it finds in the current repo
 
 USAGE: **pull** *name*
 
+pull will:
+
 1. pack up any outstanding changes in the current branch into a temp branch
-2. check out *name* and pulls
-3. check out the original branch and restores the stashed changes
+2. check out *name* and pull
+3. check out the original branch and restore the "stashed" changes
 
 ---
 #### pullto
  *Safely merge a local branch to a named target on the server using a pull request*
 
 USAGE: **pullto** *target*
+
+pullto will: 
 
 1. test that a merge from the current branch to the target will not conflict
 2. push current branch to origin
@@ -89,9 +93,10 @@ pullto will give you opportunities to abort.
 
 USAGE: **discosdu** *sdu args*
 
+discosdu will:
 
 1. prepare target Schema repos:
-   - clean it
+   - clean them
    - create new schema branches at the head of target with the same name as the current app branch
 
 2. run sdu with the provided args
@@ -106,7 +111,9 @@ disco will give you opportunities to abort.
 
 USAGE: **bestmergebase** *master* *it* *rel/1805* ... 
 
-Look at all available merge bases and return the one with the fewest commit differences with master.
+bestmergebase will:
+
+Look at all available merge bases of the branch names given to it as arguments, and return the one with the fewest commit differences with master.
 
 ---
 ---
@@ -125,12 +132,12 @@ These already seem to be available in the mingw64 bash terminal that launches wh
  
 ### Tips
 
-1. The Bitbucket api is sometimes case sensitive about your email address__
+1. The Bitbucket api is sometimes case sensitive about your email address __
   If you run into trouble with the **pullto** steps that create pull requests/merge pull requests:
   + Run **refreshsavedjiracredentials**
   + make sure the email address you provide uses the same cases as the email shown in your <https://git.code.one/account>.
 
-2. Your jira password needs to be the same as your bitbucket password__
+2. Your jira password needs to be the same as your bitbucket password __
   If you run into trouble with the **pullto** steps that create pull requests/merge pull requests:
   + Change your bitbucket password to your jira password or change your jira password to your bitbucket password
   + Run **refreshsavedjiracredentials**
