@@ -25,21 +25,56 @@ done
 
 aborted=notaborted
 
+viewer=$(logviewer)
+
+preparebranchforpullrequestlogfile=/tmp/preparebranchesforpullrequest$$.txt
+preparebranchforpullrequestlogfilefolder=$(dirname $preparebranchforpullrequestlogfile)
+preparebranchforpullrequestlogfileleaf=$(basename $preparebranchforpullrequestlogfile)
+
 if [ $aborted != aborted ] ; then
     # For each schema repo,
     #     Generate a safe branch off the target and merge into it, only to test the merge will have no conflicts
     echo "Testing for conflicts and pushing local branches to origin ... "
-    evalschema.sh --evalschemasubfolder $subfolder 'yes | preparebranchforpullrequest.sh '"${prunedargs[@]}" > /tmp/preparebranchforpullrequest$$.txt 2>&1
+    evalschema.sh --evalschemasubfolder $subfolder 'yes | preparebranchforpullrequest.sh '"${prunedargs[@]}" > ${preparebranchforpullrequestlogfile} 2>&1
 
     needcapitalY=
-    if grep CONFLICT /tmp/preparebranchforpullrequest$$.txt ; then
+    if grep CONFLICT ${preparebranchforpullrequestlogfile} ; then
         echo '**** ' "Warning: suspected conflict: piping yes will no longer work.  Must use Y below to proceed."
+        echo
+        echo '*********************************************************'
+        echo "Before typing Y, you should "
+        echo "  1. Resolve your conflicts"
+        echo "  2. Commit your changes to the current temporary branches "
+        echo '*********************************************************'
+        echo
+        needcapitalY=needcapitalY
         needcapitalY=1
     else
         echo "No conflicts found."
     fi
-    echo -n "Please check /tmp/preparebranchforpullrequest$$.txt and let me know if okay to createpullrequest (create pull requests) ... [y/n] "
-    read okay
+    yes=y
+    if [ $needcapitalY = needcapitalY  ] ; then
+        yes=Y
+    fi
+
+    okay=nothingyet
+    while [ $okay = nothingyet ] ; do
+        echo
+        echo "Please check ${preparebranchforpullrequestlogfile} and let me know if okay to createpullrequest (create pull requests) ..."
+        echo "(Provide the name of a viewer here if you want me to view logs with that in future.)"
+        echo
+        echo -n "[ ${yes} (yes) / n (abort) / v (view using ${viewer}) ] "
+        read okay
+        if [ "$okay" = "v" -o "$okay" = "V" ] ; then
+            okay=nothingyet
+            ( cd $preparebranchforpullrequestlogfilefolder ; $viewer $preparebranchforpullrequestlogfileleaf )
+        elif [ "$okay" != 'y' -a "$okay" != 'Y' -a "$okay" != 'n' -a "$okay" != 'N' ] ; then
+            setlogviewer $okay
+            okay=nothingyet
+            viewer=$(logviewer)
+            ( cd $preparebranchforpullrequestlogfilefolder ; $viewer $preparebranchforpullrequestlogfileleaf )
+        fi
+    done
     if [ -n "$needcapitalY" -a "$okay" != "Y" ] ; then
         echo "Aborting."
         aborted=aborted
@@ -49,26 +84,64 @@ if [ $aborted != aborted ] ; then
     fi
 fi
 
+prlogfile=/tmp/preparebranchforpullrequest$$.txt
+prlogfilefolder=$(dirname $prlogfile)
+prlogfileleaf=$(basename $prlogfile)
+
 if [ $aborted != aborted ] ; then
     # For each schema repo,
     #     Create a pull request on bitbucket from the current safe branch to the target
-    evalschema.sh --evalschemasubfolder $subfolder 'yes | createpullrequest '"${prunedargs[@]}" > /tmp/pr$$.txt 2>&1
+    evalschema.sh --evalschemasubfolder $subfolder 'yes | createpullrequest '"${prunedargs[@]}" > ${prlogfile} 2>&1
 
-    echo -n "Please check /tmp/pr$$.txt and let me know if okay to mprff (merge pull requests) ... [y/n] "
-    read okay
+    okay=nothingyet
+    while [ $okay = nothingyet ] ; do
+        echo "Please check ${prlogfile} and let me know if okay to mergepullrequest (merge pull requests) ..."
+        echo "(Provide the name of a viewer here if you want me to view logs with that in future.)"
+        echo
+        echo -n "[ y (yes) / n (abort) / v (view using ${viewer}) ] "
+        read okay
+        if [ "$okay" = "v" -o "$okay" = "V" ] ; then
+            okay=nothingyet
+            ( cd $prlogfilefolder ; $viewer $prlogfileleaf )
+        elif [ "$okay" != 'y' -a "$okay" != 'Y' -a "$okay" != 'n' -a "$okay" != 'N' ] ; then
+            setlogviewer $okay
+            okay=nothingyet
+            viewer=$(logviewer)
+            ( cd $prlogfilefolder ; $viewer $prlogfileleaf )
+        fi
+    done
     if [ "$okay" != "y" -a "$okay" != "Y" ] ; then
         echo "Aborting."
         aborted=aborted
     fi
 fi
 
+mprfflogfile=/tmp/mprffeparebranchforpullrequest$$.txt
+mprfflogfilefolder=$(dirname $mprfflogfile)
+mprfflogfileleaf=$(basename $mprfflogfile)
+
 if [ $aborted != aborted ] ; then
     # For each schema repo,
     #     Merge that pull request ff
-    evalschema.sh --evalschemasubfolder $subfolder 'yes | mergepullrequest '"${prunedargs[@]}"' --strategyId=ff' > /tmp/mprff$$.txt 2>&1
+    evalschema.sh --evalschemasubfolder $subfolder 'yes | mergepullrequest '"${prunedargs[@]}"' --strategyId=ff' > ${mprfflogfile} 2>&1
 
-    echo -n "Please check /tmp/mprff$$.txt and let me know if okay to runCleanup.sh ... [y/n] "
-    read okay
+    okay=nothingyet
+    while [ $okay = nothingyet ] ; do
+        echo "Please check ${mprfflogfile} and let me know if okay to runCleanup.sh ..."
+        echo "(Provide the name of a viewer here if you want me to view logs with that in future.)"
+        echo
+        echo -n "[ y (yes) / n (abort) / v (view using ${viewer}) ] "
+        read okay
+        if [ "$okay" = "v" -o "$okay" = "V" ] ; then
+            okay=nothingyet
+            ( cd $mprfflogfilefolder ; $viewer $mprfflogfileleaf )
+        elif [ "$okay" != 'y' -a "$okay" != 'Y' -a "$okay" != 'n' -a "$okay" != 'N' ] ; then
+            setlogviewer $okay
+            okay=nothingyet
+            viewer=$(logviewer)
+            ( cd $mprfflogfilefolder ; $viewer $mprfflogfileleaf )
+        fi
+    done
     if [ "$okay" != "y" -a "$okay" != "Y" ] ; then
         echo "Aborting."
         aborted=aborted
@@ -96,7 +169,6 @@ fi
 #     delete staging branches
 evalschema.sh --evalschemasubfolder $subfolder 'yes | runCleanup.sh'
 
-\rm /tmp/preparebranchforpullrequest$$.txt
-\rm /tmp/pr$$.txt
-\rm /tmp/mprff$$.txt
-
+\rm ${preparebranchforpullrequestlogfile}
+\rm ${prlogfile}
+\rm ${mprfflogfile}
