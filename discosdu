@@ -75,13 +75,34 @@ evalschema.sh --evalschemasubfolder $subfolder 'git add .'
 gitcomment=$(echo $branch | b2m)
 evalschema.sh --evalschemasubfolder $subfolder 'git commit -m "'${gitcomment}'"'
 
-evalschema.sh --evalschemasubfolder $subfolder 'git show' > /tmp/allschemadiff$$.diff
-echo Complete diff is available here for review: /tmp/allschemadiff$$.diff
-echo -n "Okay to proceed? [y/n] "
-read okay
-if [ "$okay" != "y" -a "$okay" != "Y" ] ; then
-    echo "Aborting."
-    exit 1
-fi
+difffile=/tmp/allschemadiff$$.diff
+difffilefolder=$(dirname $difffile)
+difffileleaf=$(basename $difffile)
+
+evalschema.sh --evalschemasubfolder $subfolder 'git show' > $difffile
+echo Complete diff is available here for review: $difffile
+viewer=$(difffileviewer)
+
+okay=nothingyet
+while [ $okay = nothingyet ] ; do
+    echo
+    echo "(Provide the name of a viewer here if you want me to view diff files with that in future.)"
+    echo
+    echo "Okay to proceed? [y/n] "
+    echo -n "[ y (yes) / n (abort) / v (view diff using ${viewer}) ] "
+    read okay
+    if [ $okay = "v" -o $okay = "V" ] ; then
+        okay=nothingyet
+        ( cd $difffilefolder ; $viewer $difffileleaf )
+    elif [ $okay != 'y' -a $okay != 'Y' -a $okay != 'n' -a $okay != 'N' ] ; then
+        setdifffileviewer $okay
+        okay=nothingyet
+        viewer=$(difffileviewer)
+        ( cd $difffilefolder ; $viewer $difffileleaf )
+    elif [ "$okay" != "y" -a "$okay" != "Y" ] ; then
+        echo "Aborting."
+        exit 1
+    fi
+done
 
 pushschema --evalschemasubfolder $subfolder "$targetschemabranch"

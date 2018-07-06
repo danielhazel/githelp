@@ -2,6 +2,10 @@
 HERE=$(dirname ${BASH_SOURCE[0]})
 . ${HERE}/fixpath
 
+logfile=/tmp/basegensafepullrequest$$.txt
+logfilefolder=$(dirname $logfile)
+logfileleaf=$(basename $logfile)
+
 if [ "$#" -lt 1 ] ; then
     >&2 echo Usage: $0 targetBranch
     exit 1
@@ -39,11 +43,11 @@ registerCleanup.sh 'git checkout "'${startbranch}'"'
 registerCleanup.sh 'git branch -D "'${targetBranchCopy}'"'
 registerCleanup.sh 'git push origin --delete "'${targetBranchCopy}'" 2> /dev/null'
 
-git merge me > /tmp/basegensafepullrequest$$.txt 2>&1
+git merge me > $logfile 2>&1
 
 needcapitalY=dontNeedCaptialY
 aborted=notaborted
-if grep CONFLICT /tmp/basegensafepullrequest$$.txt ; then
+if grep CONFLICT $logfile ; then
     echo '**** ' "Warning: suspected conflict: piping yes will no longer work.  Must use Y below to proceed."
     echo
     echo '*********************************************************'
@@ -57,13 +61,30 @@ if grep CONFLICT /tmp/basegensafepullrequest$$.txt ; then
 else
     echo "No conflicts found."
 fi
-echo "Please check /tmp/basegensafepullrequest$$.txt and let me know when okay to createpullrequest (create pull requests) ... "
+echo "Please check $logfile and let me know when okay to createpullrequest (create pull requests) ... "
+echo "(Provide the name of a viewer here if you want me to view logs with that in future.)"
 yes=y
 if [ $needcapitalY = needcapitalY  ] ; then
    yes=Y
 fi
-echo -n "[ ${yes} (yes) / n (abort) / ! (dont ask anymore) ] "
-read okay
+viewer=$(logviewer)
+
+okay=nothingyet
+while [ $okay = nothingyet ] ; do
+    echo
+    echo -n "[ ${yes} (yes) / n (abort) / v (view using ${viewer}) / ! (dont ask anymore) ] "
+    read okay
+    
+    if [ $okay = "v" -o $okay = "V" ] ; then
+        okay=nothingyet
+        ( cd $logfilefolder ; $viewer $logfileleaf )
+    elif [ $okay != '!' -a $okay != 'y' -a $okay != 'Y' -a $okay != 'n' -a $okay != 'N' ] ; then
+        setlogviewer $okay
+        okay=nothingyet
+        viewer=$(logviewer)
+        ( cd $logfilefolder ; $viewer $logfileleaf )
+    fi
+done
 
 if [ $needcapitalY = needcapitalY  ] ; then
     if [ "$okay" = '!' ] ; then
