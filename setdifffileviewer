@@ -1,0 +1,11 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+if [ "$#" -lt 1 ] ; then
+    echo Usage: $0 program
+    exit 1
+fi
+
+mkdir -p ${HERE}/etc
+echo $1 > "${HERE}/etc/difffileviewer"

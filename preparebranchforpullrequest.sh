@@ -75,10 +75,13 @@ while [ $okay = nothingyet ] ; do
     echo -n "[ ${yes} (yes) / n (abort) / v (view using ${viewer}) / ! (dont ask anymore) ] "
     read okay
     
-    if [ $okay = "v" -o $okay = "V" ] ; then
+    if [ "$okay" = '!' ] ; then
+        break
+    fi
+    if [ "$okay" = "v" -o "$okay" = "V" ] ; then
         okay=nothingyet
         ( cd $logfilefolder ; $viewer $logfileleaf )
-    elif [ $okay != '!' -a $okay != 'y' -a $okay != 'Y' -a $okay != 'n' -a $okay != 'N' ] ; then
+    elif [ "$okay" != '!' -a "$okay" != 'y' -a "$okay" != 'Y' -a "$okay" != 'n' -a "$okay" != 'N' ] ; then
         setlogviewer $okay
         okay=nothingyet
         viewer=$(logviewer)
