@@ -1,7 +1,20 @@
 #!/bin/bash
 
-branch=$1
-if git branch -l | sed -e 's/^..//' | grep '^'$branch > /dev/null ; then
+localorremote="-l"
+
+if arg exists -r $@ ; then
+    localorremote="-r"
+fi
+
+operands=$( arg operands $@ )
+if [ ${#operands[@]} -lt 1 ] ; then
+    echo Usage: $0 branchname
+    exit 1
+fi
+
+branch=${operands[0]}
+
+if git branch $localorremote | sed -e 's/^..//' | grep '^'$branch > /dev/null ; then
     exit 0
 else
     exit 1

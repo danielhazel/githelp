@@ -1,0 +1,59 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+echo Pullting targets
+pulltargets
+
+if ! branchexists master ; then
+    >&2 echo branch master not found.  exiting.
+    exit 1
+fi
+
+if ! branchexists it ; then
+    >&2 echo branch it not found.  exiting.
+    exit 1
+fi
+
+echo promotemergebase master it
+promotemergebase master it
+
+branch=$(branch)
+
+if [ "$branch" = mergetrack/it ] ; then
+    git push -u origin $branch || exit 1
+    for target in master it ; do
+        pull $target || break
+        yes | pullto $target || break
+    done
+fi
+
+relbranch=$(git branch | sed -e 's/^..//' | grep ^rel | sort | tail -1)
+
+if [ -z "$relbranch" ] ; then
+    >&2 echo no rel branch found. exiting.
+    exit 1
+fi
+
+if ! branchexists "$relbranch" ; then
+    >&2 echo branch "$relbranch" not found.  exiting.
+    exit 1
+fi
+
+if [[ ! "$relbranch" =~ ^rel$|^rel/[1-90]*$ ]] ; then
+    >&2 echo branch $relbranch is not recognised.  exiting.
+    exit 1
+fi
+
+echo promotemergebase master it "$relbranch"
+promotemergebase master it "$relbranch"
+
+branch=$(branch)
+
+if [[ "$branch" =~ ^mergetrack/rel.*$ ]] ; then
+    git push -u origin $branch || exit 1
+    for target in master it "$relbranch" ; do
+        pull $target || exit 1
+        yes | pullto $target || exit 1
+    done
+fi

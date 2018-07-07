@@ -97,7 +97,7 @@ if [ $needcapitalY = needcapitalY  ] ; then
 fi
 if [ "$okay" = '!' ] ; then
     echo
-    echo "USER REQUESTED CAREER TO END!!"
+    echo "USER REQUESTED: DON'T ASK ANYMORE!!"
 elif [ $needcapitalY = needcapitalY -a "$okay" != "Y" ] ; then
     echo "Aborting."
     aborted=aborted

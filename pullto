@@ -11,13 +11,37 @@ if ! allcommitted ; then
     exit 1
 fi
 
-aborted=notaborted
+if [ "$#" -lt 1 ] ; then
+    echo Usage: $0 targetbranch
+    exit 1
+fi
 
+target=$1
+currentbranch=$(branch)
+
+if ! branchexists "$target" ; then
+    if branchexists -r origin/$target ; then
+        git checkout -b $target origin/$target
+        git checkout $currentbranch
+    fi
+fi
+if ! branchexists $target ; then
+    >&2 echo no branch found: $target
+    exit 1
+fi
+
+if git merge-base $(branch) --is-ancestor $target ; then
+    echo This branch has already been merged to $target
+    exit 1
+fi
+
+aborted=notaborted
 career=nocareer
+
 if [ $aborted != aborted ] ; then
     echo Testing the pull request will not be blocked by conflicts ...
     # Generate a safe branch off the target and merge into it
-    preparebranchforpullrequest.sh $@ | tee /tmp/preparebranchforpullrequest$$
+    preparebranchforpullrequest.sh $target | tee /tmp/preparebranchforpullrequest$$
     if [ "${PIPESTATUS[0]}" = "1" ] ; then
         aborted=aborted
     else
@@ -31,10 +55,10 @@ fi
 if [ $aborted != aborted ] ; then
     # create a pull request on bitbucket from that safe branch to the target
     if [ $career = career ] ; then
-        if ! ( yes | createpullrequest $@ ) ; then
+        if ! ( yes | createpullrequest $target ) ; then
             aborted=aborted
         fi
-    elif ! createpullrequest $@ ; then
+    elif ! createpullrequest $target ; then
         aborted=aborted
     fi
 fi
@@ -42,10 +66,10 @@ fi
 if [ $aborted != aborted ] ; then
     # merge that pull request no-ff
     if [ $career = career ] ; then
-        if ! ( yes | mergepullrequest $@ --strategyId=no-ff ) ; then
+        if ! ( yes | mergepullrequest $target --strategyId=no-ff ) ; then
             aborted=aborted
         fi
-    elif ! mergepullrequest $@ --strategyId=no-ff ; then
+    elif ! mergepullrequest $target --strategyId=no-ff ; then
         aborted=aborted
     fi
 fi
