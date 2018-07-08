@@ -1,0 +1,18 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+LOGS=${HERE}/log
+mkdir -p $LOGS
+exec >> ${LOGS}/freshencoreapps.log 2>&1
+
+echo '======================================='
+echo The time is $(date)
+echo
+
+evalcore.sh 'syncapp || echo moving on.'
+
+echo
+echo Sync apps done
+echo The time is $(date)
+echo '======================================='
