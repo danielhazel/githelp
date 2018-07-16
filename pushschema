@@ -74,7 +74,7 @@ if [ $aborted != aborted ] ; then
             ( cd $preparebranchforpullrequestlogfilefolder ; $viewer $preparebranchforpullrequestlogfileleaf )
         fi
     done
-    if [ -n "$needcapitalY" -a "$okay" != "Y" ] ; then
+    if [ "$needcapitalY" = needcapitalY -a "$okay" != "Y" ] ; then
         echo "Aborting."
         aborted=aborted
     elif [ "$okay" != "y" -a "$okay" != "Y" ] ; then
