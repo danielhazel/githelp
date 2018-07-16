@@ -37,7 +37,7 @@ if [ $aborted != aborted ] ; then
     echo "Testing for conflicts and pushing local branches to origin ... "
     evalschema.sh --evalschemasubfolder $subfolder 'yes | preparebranchforpullrequest.sh '"${prunedargs[@]}" > ${preparebranchforpullrequestlogfile} 2>&1
 
-    needcapitalY=
+    needcapitalY=dontNeedCaptialY
     if grep CONFLICT ${preparebranchforpullrequestlogfile} ; then
         echo '**** ' "Warning: suspected conflict: piping yes will no longer work.  Must use Y below to proceed."
         echo
@@ -48,12 +48,11 @@ if [ $aborted != aborted ] ; then
         echo '*********************************************************'
         echo
         needcapitalY=needcapitalY
-        needcapitalY=1
     else
         echo "No conflicts found."
     fi
     yes=y
-    if [ $needcapitalY = needcapitalY  ] ; then
+    if [ "$needcapitalY" = needcapitalY  ] ; then
         yes=Y
     fi
 
