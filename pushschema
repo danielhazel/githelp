@@ -84,7 +84,7 @@ if [ $aborted != aborted ] ; then
     fi
 fi
 
-prlogfile=/tmp/preparebranchforpullrequest$$.txt
+prlogfile=/tmp/createpullrequest$$.txt
 prlogfilefolder=$(dirname $prlogfile)
 prlogfileleaf=$(basename $prlogfile)
 
