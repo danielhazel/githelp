@@ -45,7 +45,7 @@ if [ $aborted != aborted ] ; then
     if [ "${PIPESTATUS[0]}" = "1" ] ; then
         aborted=aborted
     else
-        if grep '^USER REQUESTED CAREER TO END' /tmp/preparebranchforpullrequest$$ > /dev/null 2>&1 ; then
+        if grep "^USER REQUESTED: DON'T ASK ANYMORE" /tmp/preparebranchforpullrequest$$ > /dev/null 2>&1 ; then
             career=career
         fi
     fi
