@@ -29,12 +29,15 @@ fi
 targetschemabranch=
 schemarelarg=$( arg after --schema-rel $@ )
 barg=$( arg after -b $@ )
+brancharg=$( arg after --branch $@ )
 corelibarg=$( arg after --corelib $@ )
 
 if [ -n "$schemarelarg" ] ; then
     targetschemabranch=versrel/$schemarelarg
 elif [  -n "$barg" ] ; then
     targetschemabranch="$barg"
+elif [  -n "$brancharg" ] ; then
+    targetschemabranch="$brancharg"
 elif [ -n "$corelibarg" ] ; then
     if [ $corelibarg = dev -o $corelibarg = it ] ; then
         targetschemabranch=$corelibarg
