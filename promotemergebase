@@ -38,7 +38,13 @@ fi
 
 # Lets call the final argument branch rel
 rel=${targetbranches[-1]}
-root=$(git reflog $rel | tail -n 1 | awk '{print $1}')
+devbranches=${targetbranches[@]/$rel}
+
+findrelrootcommand="git log --oneline $rel"
+for devbranch in ${devbranches[@]} ; do
+    findrelrootcommand+=" --not $devbranch"
+done
+root=$($findrelrootcommand | tail -n 1 | awk '{print $1}')
 
 # create the mergetrackbranch if it doesn't exist
 mergetrackbranch=mergetrack/$rel
@@ -50,8 +56,6 @@ fi
 # Find all the second parents of merge commits to rel back to its root
 secondparents=$(git log --merges ${root}..${rel} --oneline --pretty=%P | awk '{print $2}')
 
-devbranches=${targetbranches[@]/$rel}
-
 mergethese=()
 for mergeparent in ${secondparents[@]} ; do
     okaysofar=okaysofar
@@ -61,6 +65,23 @@ for mergeparent in ${secondparents[@]} ; do
             okaysofar=notokay
             break
         fi
+        # Find the descendents from this mergeparent to the devbranch
+        ancestry=$(git log --reverse --ancestry-path ${mergeparent}..${devbranch} --oneline | head -3)
+        # The mergeparent needs to have been merged to the devbranch via a pull request
+        pullrequestpattern="^[^ ]* Merge pull request .* ${devbranch}"
+        resolveconflictpattern="^[^ ]* Merge branch 'me' into .*${devbranch}"
+        if echo "$ancestry" | head -1 | grep "$pullrequestpattern" 2> /dev/null >&2 ; then
+            # okay
+            continue
+        fi
+        if echo "$ancestry" | head -1 | grep "$resolveconflictpattern" 2> /dev/null >&2 ; then
+            if echo "$ancestry" | head -2 | tail -1 | grep "$pullrequestpattern"  2> /dev/null >&2 ; then
+                # okay
+                continue
+            fi
+        fi
+        okaysofar=notokay
+        break
     done
     if [ $okaysofar = okaysofar ] ; then
         mergethese+=( $mergeparent )

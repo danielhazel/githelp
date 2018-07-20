@@ -34,7 +34,8 @@ echo "$srconly" | while read commit; do
         # covered by a cherry-pick
         continue
     fi
-    if echo "$cowboytags" | grep 'Cowboy_'$commit > /dev/null ; then
+    shortcommit=${commit:0:10}
+    if echo "$cowboytags" | grep 'Cowboy_'$shortcommit > /dev/null ; then
         # echo src $commit is a cowboy commit
         # covered by a cowboy commit
         continue
