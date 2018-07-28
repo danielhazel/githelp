@@ -22,7 +22,7 @@ cd ../CoreLib/dev
 pwd
 if ! eval $cmd ; then >&2 echo exiting early; exit 1; fi
 
-for app in Workplace SystemManagement SystemIntegration SystemSecurity CpmCore DistributedProcessor TerrificRetailCore TerrificRetailOrders; do
+for app in Workplace SystemManagement SystemIntegration SystemSecurity CpmCore DistributedProcessor CrystalReports TerrificRetailCore TerrificRetailOrders; do
     cd $addonpacks
     cd ${app}/dev > /dev/null
     pwd
