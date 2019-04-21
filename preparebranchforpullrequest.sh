@@ -43,7 +43,7 @@ registerCleanup.sh 'git checkout "'${startbranch}'"'
 registerCleanup.sh 'git branch -D "'${targetBranchCopy}'"'
 registerCleanup.sh 'git push origin --delete "'${targetBranchCopy}'" 2> /dev/null'
 
-git merge me > $logfile 2>&1
+git merge -Xignore-all-space me > $logfile 2>&1
 
 needcapitalY=dontNeedCaptialY
 aborted=notaborted
