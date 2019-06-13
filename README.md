@@ -37,10 +37,30 @@
 ### Command descriptions
 
 ---
+#### j2b
+ *Jira Description to Branch Name*
+
+###### USAGE: 
+ **j2b** *jiraissue*
+
+j2b will:
+
+1. generate a git branch name from a jira description
+
+The branch name is echoed to stdout.
+
+###### Example:
+
+**$** `j2b CCP-17382`
+
+danh/feature/CCP-17382----_Investigate_push_notifications_for_CiAnywhere
+
+---
 #### gjb
  *Git Jira Branch*
 
-USAGE: **gjb** *jiraissue*
+###### USAGE:
+ **gjb** *jiraissue*
 
 gjb will:
 
@@ -56,7 +76,8 @@ gjb will give you opportunities to abort.
 #### pulltargets
  *Pull locally discovered target branches*
 
-USAGE: **pulltargets**
+###### USAGE:
+ **pulltargets**
 
 just pulls *master*, *it* and any *rel* branches it finds in the current repo
 
@@ -64,7 +85,8 @@ just pulls *master*, *it* and any *rel* branches it finds in the current repo
 #### pull
  *Pull a named branch*
 
-USAGE: **pull** *name*
+###### USAGE:
+ **pull** *name*
 
 pull will:
 
@@ -76,7 +98,8 @@ pull will:
 #### pullto
  *Safely merge a local branch to a named target on the server using a pull request*
 
-USAGE: **pullto** *target*
+###### USAGE:
+ **pullto** *target*
 
 pullto will: 
 
@@ -91,7 +114,8 @@ pullto will give you opportunities to abort.
 #### discosdu
  *Run sdu and check in changes to the origin schema repos*
 
-USAGE: **discosdu** *sdu args*
+###### USAGE:
+ **discosdu** *sdu args*
 
 discosdu will:
 
@@ -109,11 +133,49 @@ disco will give you opportunities to abort.
 #### bestmergebase
  *Show the best merge-base to develop on from a list of target branches the work will eventually be merged into*
 
-USAGE: **bestmergebase** *master* *it* *rel/1805* ... 
+###### USAGE:
+ **bestmergebase** *master* *it* *rel/1805* ... 
 
 bestmergebase will:
 
 Look at all available merge bases of the branch names given to it as arguments, and return the one with the fewest commit differences with master.
+
+---
+#### b2m
+ *Branch name to commit message*
+
+###### USAGE:
+ **b2m** *jiraissue*
+
+b2m will:
+
+1. read a branch name from stdin and echo the corresponding commit message to stdout
+
+###### Example:
+
+**$** `echo danh/feature/CCP-17382----_Investigate_push_notifications_for_CiAnywhere | b2m`
+
+CCP-17382: Investigate push notifications for CiAnywhere
+
+---
+#### branch
+ *Current branch name*
+
+###### USAGE:
+ **branch**
+
+branch will:
+
+1. echo the current working branch name to stdout
+
+###### Examples:
+
+**$** `branch`
+
+danh/feature/CCP-17382----_Investigate_push_notifications_for_CiAnywhere
+
+**$** `git commit -m "$(branch | b2m)"`
+
 
 ---
 ---
@@ -130,14 +192,20 @@ These already seem to be available in the mingw64 bash terminal that launches wh
 
  * t1get install curl
  
+---
+---
 ### Tips
 
-1. The Bitbucket api is sometimes case sensitive about your email address __
-  If you run into trouble with the **pullto** steps that create pull requests/merge pull requests:
-  + Run **refreshsavedjiracredentials**
-  + make sure the email address you provide uses the same cases as the email shown in your <https://git.code.one/account>.
+---
+#### The Bitbucket api is sometimes case sensitive about your email address
 
-2. Your jira password needs to be the same as your bitbucket password __
-  If you run into trouble with the **pullto** steps that create pull requests/merge pull requests:
+If you run into trouble with the **pullto** steps that create pull requests/merge pull requests:
+  + Run `refreshsavedjiracredentials`
+  + make sure the email address you provide uses the same casing as the email shown in your <https://git.code.one/account>.
+
+---
+#### Your jira password needs to be the same as your bitbucket password
+
+If you run into trouble with the **pullto** steps that create pull requests/merge pull requests:
   + Change your bitbucket password to your jira password or change your jira password to your bitbucket password
-  + Run **refreshsavedjiracredentials**
+  + Run `refreshsavedjiracredentials`

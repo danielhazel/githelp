@@ -1,0 +1,85 @@
+#!/bin/bash
+HERE=$(dirname ${BASH_SOURCE[0]})
+. ${HERE}/fixpath
+
+if ! checkDANKEY ; then
+    exit 1
+fi
+
+# Given a jira issue, e.g. CCP-12345, generate and echo a branch name from the jira description
+
+if ! checkJiraCredentials ; then
+    exit 1
+fi
+JIRACRED=$(jirac)
+
+if [ "$#" -lt 1 ] ; then
+    >&2 echo Usage: $0 issue
+    exit 1
+fi
+
+issue=$1
+
+if [[ "$issue" =~ ^[01-9] ]] ; then
+    issue=CCP-$issue
+fi
+
+issuedeetsfile=/tmp/gjb$$
+# >&2 echo issuedeetsfile=$issuedeetsfile
+
+issuedeetsSummaryExtract="
+s=process.openStdin();\
+d=[];\
+s.on('data',function(c) {\
+    d.push(c);\
+});\
+s.on('end',function() {\
+    var summary=JSON.parse(d.join('')).fields.summary;\
+    process.stdout.write(summary);
+});"
+
+issuedeetsIssueTypeExtract="
+s=process.openStdin();\
+d=[];\
+s.on('data',function(c) {\
+    d.push(c);\
+});\
+s.on('end',function() {\
+    var issueType=JSON.parse(d.join('')).fields.issuetype.name;\
+    process.stdout.write(issueType);
+});"
+
+curl -sS -k -u "$JIRACRED" -H "Content-Type: application/json" -X GET https://jira.code.one/rest/api/latest/issue/$issue > $issuedeetsfile
+
+if badcredentials $issuedeetsfile ; then
+    >&2 echo Unauthorized.
+    >&2 echo You should rerun ${HERE}/refreshsavedjiracredentials
+    exit 1
+fi
+
+if grep -i '"Issue Does Not Exist"' $issuedeetsfile 2>&1 > /dev/null; then
+    >&2 cat $issuedeetsfile
+    >&2 echo
+    >&2 echo Aborting.
+    exit 1
+fi
+
+summary="$issue: "`cat $issuedeetsfile | node -e "$issuedeetsSummaryExtract"`
+issueType=$(cat $issuedeetsfile | node -e "$issuedeetsIssueTypeExtract")
+
+branchtype=
+case "$issueType" in
+    "Bug")
+        branchtype=bugfix
+        ;;
+    *)
+        branchtype=feature
+        ;;
+esac
+branchuser=$(echo $USER | tr '[:upper:]' '[:lower:]')
+branchname=$( echo ${branchuser}/${branchtype}/$summary | m2b )
+echo "$branchname"
+
+if [ -e "$issuedeetsfile" ] ; then
+    \rm -f "$issuedeetsfile"
+fi
