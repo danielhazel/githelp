@@ -1,0 +1,49 @@
+#!/bin/bash
+
+if ! allcommitted ; then
+    >&2 echo "Local status is not safe enough to run this command."
+    exit 1
+fi
+
+if [ "$#" -lt 1 ] ; then
+    >&2 echo Usage: $0 branch_to_be_ignored
+    >&2 echo e.g. 
+    >&2 echo co rel/1811
+    >&2 echo $0 my_bugfix_for_rel_1805_only
+    >&2 echo co my_bugfix_for_rel_1805_only
+    >&2 echo pullto rel/1805
+    exit 1
+fi
+
+function exitlikethis
+{
+    >&2 echo $@
+    exit 1
+}
+
+branchtoprotect=$(branch)
+
+relbranch=$1
+if ! branchexists "$relbranch" ; then
+    git checkout -b $relbranch origin/$relbranch || exitlikethis "failed to find $relbranch"
+fi
+
+if ! branchexists "$relbranch" ; then
+    exitlikethis "failed to find $relbranch"
+fi
+
+if [ "$(branch)" != "$branchtoprotect" ] ; then
+    git checkout "$branchtoprotect" || exitlikethis "failed to checkout $branchtoprotect"
+fi
+
+prbranch="danh/feature/CCP-18031----_Branch_maintenance----_protect_${branchtoprotect}_from_${relbranch}"
+
+git branch -D "$prbranch" 2>/dev/null 
+git checkout -b "$prbranch" || exitlikethis "failed to checkout temp branch $prbranch"
+git merge -s ours $relbranch || exitlikethis "failed to: merge -s ours $relbranch"
+pullto "$branchtoprotect"
+
+if [ "$(branch)" != "$branchtoprotect" ] ; then
+    git checkout "$branchtoprotect"
+    git branch -D "$prbranch"
+fi
