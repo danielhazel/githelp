@@ -11,18 +11,29 @@ if ! allcommitted ; then
     exit 1
 fi
 
+runsdu=$( arg after -runsdu $@ )
+
 # This script commits new schema for the current app to the targeted schema branches
 # All the real work is done by sdu and the programs it uses.
 
+checkJiraCredentials
+
 # Check the current branch is okay
 branch=$(branch)
+appbranch=$(branch)
+
 if [ -z "$branch" ] ; then
     >&2 echo You should run the from within a clone of an apps repo.  No branch found.
     exit 1
 fi
-if [ "$branch" = "master" -o  "$branch" = "it" -o  "${branch:0:4}" = "rel/" ] ; then
-    >&2 echo You should check out a feature branch first.  Current branch is forbidden: ${branch}.  
-    exit 1
+if [ "$branch" = "master" -o  "$branch" = "it" -o  "${branch:0:4}" = "rel/" -o "${branch:0:8}" = "versrel/" ] ; then
+    if [ "$runsdu" != "y" -a "$runsdu" != "Y" ] ; then
+        >&2 echo You should check out a feature branch first.  Current branch is forbidden: ${branch}.  
+        exit 1
+    else
+        >&2 echo Automatic branch naming requires you to check out a feature branch first.  Current branch is not a feature branch - enter a branch name for schema apps: ${branch}.  
+        read branch
+    fi
 fi
 
 # Find the schema branch targeted.
@@ -31,6 +42,10 @@ schemarelarg=$( arg after --schema-rel $@ )
 barg=$( arg after -b $@ )
 brancharg=$( arg after --branch $@ )
 corelibarg=$( arg after --corelib $@ )
+apparg=$( arg after -a $@ )
+
+allappnames=($(echo $apparg | tr ',' ' '))
+numapps=${#allappnames[@]}
 
 if [ -n "$schemarelarg" ] ; then
     targetschemabranch=versrel/$schemarelarg
@@ -69,13 +84,56 @@ evalschema.sh --evalschemasubfolder $subfolder 'git branch -D "'$branch'"' > /de
 evalschema.sh --evalschemasubfolder $subfolder 'git checkout -b "'$branch'"'
 
 # call sdu with discosdu arguments
-set -x
-sdu "$@"
-set +x
+# if $@ contains the -runsdu arg, we need to remove that first (otherwise SDU will complain)
+argsarray=( "$@" )
+new_args_array=()
+prev_runsdu=false
+for value in "${argsarray[@]}"
+do
+    if [ "$value" == "-runsdu" ]; then   
+        prev_runsdu=true
+    elif [ "$prev_runsdu" == true ]; then
+        prev_runsdu=false
+    else
+        new_args_array+=($value)
+    fi
+done
+argsarray=("${new_args_array[@]}")
+unset new_args_array
+
+if [ ${numapps} -gt 1 ] ; then
+    for appname in "${allappnames[@]}"
+    do
+        #trim any whitespace from around the appname string
+        realappname=${appname/[[:space:]]/""}
+        echo '-------------------------------------'
+        echo "running SDU for ${realappname}"
+        allsduargs="${argsarray[@]}"
+        sduargs=(${allsduargs/$apparg/$realappname})
+        echo "${sduargs}"
+        set -x
+        sdu "${sduargs[@]}"
+        set +x
+        echo '-------------------------------------'
+    done
+else
+    set -x
+    sdu "${argsarray[@]}"
+    set +x
+fi
 
 # Finally push the schema to bitbucket and merge it
+if [ "$runsdu" != "y" -a "$runsdu" != "Y" ] ; then
+    gitcomment=$(echo $branch | b2m)
+else
+    if [ "$appbranch" = "master" -o  "$appbranch" = "it" -o  "${appbranch:0:4}" = "rel/" -o  "${appbranch:0:8}" = "versrel/" ] ; then
+    	echo "Please enter a commit message"
+    	read gitcomment
+    else
+    	gitcomment=$(echo $branch | b2m)	
+    fi
+fi
 evalschema.sh --evalschemasubfolder $subfolder 'git add .'
-gitcomment=$(echo $branch | b2m)
 evalschema.sh --evalschemasubfolder $subfolder 'git commit -m "'${gitcomment}'"'
 
 difffile=/tmp/allschemadiff$$.diff
@@ -89,7 +147,7 @@ viewer=$(difffileviewer)
 okay=nothingyet
 while [ $okay = nothingyet ] ; do
     echo
-    echo "(Provide the name of a viewer here if you want me to view diff files with that in future.)"
+    echo "(Provide the name of a viewer here if you want me to view diff files with that in future. Default viewer is ${viewer})"
     echo
     echo "Okay to proceed? [y/n] "
     echo -n "[ y (yes) / n (abort) / v (view diff using ${viewer}) ] "
@@ -108,4 +166,4 @@ while [ $okay = nothingyet ] ; do
     fi
 done
 
-pushschema --evalschemasubfolder $subfolder "$targetschemabranch"
+pushschema  -runsdu $runsdu --evalschemasubfolder $subfolder "$targetschemabranch"

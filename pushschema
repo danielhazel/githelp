@@ -11,14 +11,23 @@ if [ $# = 0 ] ; then
     exit 1
 fi
 
+runsdu=$( arg after -runsdu $@ )
+
 subfolder=dev
 prunedargs=()
+prev_runsdu=false
 lastarg=
 for arg ; do
     if [ "$lastarg" = "--evalschemasubfolder" ] ; then
         subfolder=$arg
     elif [ "$arg" != "--evalschemasubfolder" ] ; then
-        prunedargs+=($arg)
+         if [ "$arg" == "-runsdu" ]; then   
+            prev_runsdu=true
+        elif [ "$prev_runsdu" == true ]; then
+            prev_runsdu=false
+        else
+            prunedargs+=($arg)
+        fi
     fi
     lastarg="$arg"
 done
@@ -60,7 +69,7 @@ if [ $aborted != aborted ] ; then
     while [ $okay = nothingyet ] ; do
         echo
         echo "Please check ${preparebranchforpullrequestlogfile} and let me know if okay to createpullrequest (create pull requests) ..."
-        echo "(Provide the name of a viewer here if you want me to view logs with that in future.)"
+        echo "(Provide the name of a viewer here if you want me to view logs with that in future. Default viewer is ${viewer})"
         echo
         echo -n "[ ${yes} (yes) / n (abort) / v (view using ${viewer}) ] "
         read okay
@@ -90,28 +99,44 @@ prlogfileleaf=$(basename $prlogfile)
 if [ $aborted != aborted ] ; then
     # For each schema repo,
     #     Create a pull request on bitbucket from the current safe branch to the target
+    
     evalschema.sh --evalschemasubfolder $subfolder 'yes | createpullrequest '"${prunedargs[@]}" > ${prlogfile} 2>&1
 
-    okay=nothingyet
-    while [ $okay = nothingyet ] ; do
-        echo "Please check ${prlogfile} and let me know if okay to mergepullrequest (merge pull requests) ..."
-        echo "(Provide the name of a viewer here if you want me to view logs with that in future.)"
-        echo
-        echo -n "[ y (yes) / n (abort) / v (view using ${viewer}) ] "
-        read okay
-        if [ "$okay" = "v" -o "$okay" = "V" ] ; then
-            okay=nothingyet
-            ( cd $prlogfilefolder ; $viewer $prlogfileleaf )
-        elif [ "$okay" != 'y' -a "$okay" != 'Y' -a "$okay" != 'n' -a "$okay" != 'N' ] ; then
-            setlogviewer $okay
-            okay=nothingyet
-            viewer=$(logviewer)
-            ( cd $prlogfilefolder ; $viewer $prlogfileleaf )
+    if [ "$runsdu" != "Y" -a "$runsdu" != "y" ] ; then
+
+        okay=nothingyet
+        while [ $okay = nothingyet ] ; do
+            echo "Please check ${prlogfile} and let me know if okay to mergepullrequest (merge pull requests) ..."
+            echo "(Provide the name of a viewer here if you want me to view logs with that in future.)"
+            echo
+            echo -n "[ y (yes) / n (abort) / v (view using ${viewer}) ] "
+            read okay
+            if [ "$okay" = "v" -o "$okay" = "V" ] ; then
+                okay=nothingyet
+                ( cd $prlogfilefolder ; $viewer $prlogfileleaf )
+            elif [ "$okay" != 'y' -a "$okay" != 'Y' -a "$okay" != 'n' -a "$okay" != 'N' ] ; then
+                setlogviewer $okay
+                okay=nothingyet
+                viewer=$(logviewer)
+                ( cd $prlogfilefolder ; $viewer $prlogfileleaf )
+            fi
+        done
+        if [ "$okay" != "y" -a "$okay" != "Y" ] ; then
+            echo "Aborting."
+            aborted=aborted
         fi
-    done
-    if [ "$okay" != "y" -a "$okay" != "Y" ] ; then
-        echo "Aborting."
-        aborted=aborted
+    else
+        echo 
+        echo '----------------------------------------------------------------------'
+        echo
+        echo Please review and merge pull requests on BitBucket. Press ${yes} once you have reviewed and merged all your Pull Requests.
+        echo 'Alternatively, press n to exit. When merging your pull requests, please ensure you delete the source branch'
+        echo -n "[ ${yes} (yes) / n (exit) ] "
+        read okay
+        if [ "$okay" != "y" -a "$okay" != "Y" ] ; then
+            echo "Aborting."
+            aborted=aborted
+        fi
     fi
 fi
 
@@ -120,9 +145,12 @@ mprfflogfilefolder=$(dirname $mprfflogfile)
 mprfflogfileleaf=$(basename $mprfflogfile)
 
 if [ $aborted != aborted ] ; then
-    # For each schema repo,
-    #     Merge that pull request ff
-    evalschema.sh --evalschemasubfolder $subfolder 'yes | mergepullrequest '"${prunedargs[@]}"' --strategyId=ff' > ${mprfflogfile} 2>&1
+
+    if [ "$runsdu" != "Y" -a "$runsdu" != "y" ] ; then
+        # For each schema repo,
+        #     Merge that pull request ff
+        evalschema.sh --evalschemasubfolder $subfolder 'yes | mergepullrequest '"${prunedargs[@]}"' --strategyId=ff' > ${mprfflogfile} 2>&1
+    fi
 
     okay=nothingyet
     while [ $okay = nothingyet ] ; do
@@ -170,4 +198,7 @@ evalschema.sh --evalschemasubfolder $subfolder 'yes | runCleanup.sh'
 
 \rm ${preparebranchforpullrequestlogfile}
 \rm ${prlogfile}
-\rm ${mprfflogfile}
+if [ ! -f "${mprfflogfile}" ]; then
+    \rm ${mprfflogfile}
+fi
+
