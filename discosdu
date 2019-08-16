@@ -166,4 +166,4 @@ while [ $okay = nothingyet ] ; do
     fi
 done
 
-pushschema  -runsdu $runsdu --evalschemasubfolder $subfolder "$targetschemabranch"
+pushschema  -runsdu "$runsdu" --evalschemasubfolder $subfolder "$targetschemabranch"
